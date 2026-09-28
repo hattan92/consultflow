@@ -35,7 +35,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
 </head>
 <body>
 <header>
-  <div class="brand">ConsultFlow ED<small>V1.8 Clinical Workflow Prototype</small></div>
+  <div class="brand">ConsultFlow ED<small>V1.9 Clinical Workflow Prototype</small></div>
   <div class="user" id="userBox"></div>
 </header>
 <div class="wrap" id="app"></div>
@@ -68,6 +68,24 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
     </div>
     <div class="banner info" style="margin-top:12px">MRN / National ID / Iqama is mandatory in one identifier field. All five I-SBAR sections are separate mandatory boxes.</div>
     <div class="actions" style="justify-content:flex-end"><button class="btn secondary" onclick="closeNew()">Cancel</button><button class="btn primary" onclick="createConsultation()">Create & Send Consultation</button></div>
+  </div>
+</div>
+
+<div class="modal" id="medAdminRouteModal">
+  <div class="modalbox">
+    <div class="modalhead">
+      <div><h2>Route Consultation</h2><div class="sub">Medical Administration On-Call can hand the case to any rota level for the same specialty.</div></div>
+      <button class="x" onclick="closeMedAdminRoute()">✕</button>
+    </div>
+    <div class="banner info" id="marPatientSummary"></div>
+    <input type="hidden" id="marCaseId">
+    <div class="formgrid">
+      <div class="field"><label>Specialty</label><input id="marSpecialty" disabled></div>
+      <div class="field"><label>Route To *</label><select id="marTarget"></select></div>
+      <div class="field span2"><label>Mandatory Reason / Instruction *</label><textarea id="marReason" placeholder="Document why the consultation is being routed and any instruction to the receiving person."></textarea></div>
+    </div>
+    <div class="notice"><b>Routing rules:</b> this action keeps the same consultation and Patient Journey, records Medical Administration On-Call as the routing user, preserves prior delay/escalation history, resets the active acceptance stage for the newly assigned person, and sends them a new alert. After they press Accept Consultation, their 30-minute attendance clock starts.</div>
+    <div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn secondary" onclick="closeMedAdminRoute()">Cancel</button><button class="btn primary" onclick="submitMedAdminRoute()">Confirm Route</button></div>
   </div>
 </div>
 
@@ -585,7 +603,7 @@ function caseMetrics(cases){
 function kpiHtml(m){return '<div class="kpis"><div class="kpi"><span>Total consultations</span><b>'+m.total+'</b></div><div class="kpi"><span>Within 30-min attendance KPI</span><b>'+m.within+'</b></div><div class="kpi"><span>Delayed >30 min</span><b>'+m.delayed+'</b></div><div class="kpi"><span>Median accept</span><b>'+(m.medianAccept==null?'—':m.medianAccept+'m')+'</b></div><div class="kpi"><span>Median attendance</span><b>'+(m.medianAttendance==null?'—':m.medianAttendance+'m')+'</b></div></div>'
 }
 function roleNav(){
- return '<div class="roleNav"><a href="?user=ED001&v=18">ED Physician</a><a href="?user=EDN001&v=18">ED Nurse</a><a href="?user=EDTL001&v=18">ED Team Leader</a><a href="?user=EDHOD001&v=18">ED HOD</a><a href="?user=ORTH1&v=18">First On-Call</a><a href="?user=ORTH2&v=18">Second On-Call</a><a href="?user=ORTH3&v=18">Third On-Call</a><a href="?user=ORTHHOD&v=18">Specialty HOD</a><a href="?user=MEDON1&v=18">Med Admin On-Call</a><a href="?user=MEDADM1&v=18">Medical Administration</a><a href="?user=CQI001&v=18">CQI & PS</a><a href="?user=SYS001&v=18">System Admin</a></div>'
+ return '<div class="roleNav"><a href="?user=ED001&v=19">ED Physician</a><a href="?user=EDN001&v=19">ED Nurse</a><a href="?user=EDTL001&v=19">ED Team Leader</a><a href="?user=EDHOD001&v=19">ED HOD</a><a href="?user=ORTH1&v=19">First On-Call</a><a href="?user=ORTH2&v=19">Second On-Call</a><a href="?user=ORTH3&v=19">Third On-Call</a><a href="?user=ORTHHOD&v=19">Specialty HOD</a><a href="?user=MEDON1&v=19">Med Admin On-Call</a><a href="?user=MEDADM1&v=19">Medical Administration</a><a href="?user=CQI001&v=19">CQI & PS</a><a href="?user=SYS001&v=19">System Admin</a></div>'
 }
 function openNew(){document.getElementById('newModal').classList.add('open')}
 function closeNew(){document.getElementById('newModal').classList.remove('open')}
@@ -781,11 +799,73 @@ function renderRotaCard(spec){
  const gap=!r.firstId||!r.secondId||!r.thirdId||!r.hodId;
  return '<div class="sub" style="margin-bottom:6px">Effective '+esc(dateLabel(today))+'</div><div class="profileLine"><span>First</span><b>'+esc(r.first||'GAP')+'</b></div><div class="profileLine"><span>Second</span><b>'+esc(r.second||'GAP')+'</b></div><div class="profileLine"><span>Third</span><b>'+esc(r.third||'GAP')+'</b></div><div class="profileLine"><span>HOD</span><b>'+esc(r.hod||'GAP')+'</b></div><div class="profileLine"><span>Med Admin On-Call</span><b>'+esc(profiles.MEDON1.name)+'</b></div>'+(gap?'<div class="notice dangerNotice"><b>Coverage gap detected.</b></div>':'')
 }
+function medAdminRouteOptions(cc){
+ const opts=[
+   ['First On-Call',cc.firstId,cc.first],
+   ['Second On-Call',cc.secondId,cc.second],
+   ['Third On-Call',cc.thirdId,cc.third],
+   ['Head of Department',cc.hodId,cc.hod],
+   ['Medical Administration On-Call','MEDON1',profiles.MEDON1?.name||'Medical Administration On-Call']
+ ];
+ return opts.map(([level,id,name])=>({level,id,name:name||'GAP'}))
+}
+function openMedAdminRoute(id){
+ const cc=state.cases.find(x=>x.id===id);if(!cc||roleKey()!=='medadmin_oncall')return;
+ document.getElementById('marCaseId').value=cc.id;
+ document.getElementById('marSpecialty').value=cc.specialty;
+ document.getElementById('marReason').value='';
+ document.getElementById('marPatientSummary').innerHTML='<b>'+esc(cc.patientName)+'</b> • '+esc(cc.specialty)+' • Bed '+esc(cc.bed)+'<br>Current level: '+esc(cc.currentLevel)+' • Current assignee: '+esc(assigneeNameForLevel(cc,cc.currentLevel));
+ const sel=document.getElementById('marTarget');
+ sel.innerHTML='<option value="">Select receiving team member</option>'+medAdminRouteOptions(cc).map(o=>'<option value="'+esc(o.level)+'">'+esc(o.level)+' — '+esc(o.name)+'</option>').join('');
+ document.getElementById('medAdminRouteModal').classList.add('open')
+}
+function closeMedAdminRoute(){document.getElementById('medAdminRouteModal').classList.remove('open')}
+function submitMedAdminRoute(){
+ const id=document.getElementById('marCaseId').value,cc=state.cases.find(x=>x.id===id),toLevel=document.getElementById('marTarget').value,reason=document.getElementById('marReason').value.trim(),u=me();
+ if(!cc||roleKey()!=='medadmin_oncall')return;
+ if(!toLevel){alert('Select who should receive the consultation.');return}
+ if(!reason){alert('Reason / instruction is mandatory.');return}
+ const targetId=assigneeIdForLevel(cc,toLevel),targetName=assigneeNameForLevel(cc,toLevel);
+ if(!targetId&&toLevel!=='Medical Administration On-Call'){alert('No active user is assigned to '+toLevel+' for '+cc.specialty+'. Update the rota first.');return}
+ if(!cc.medAdminRoutingHistory)cc.medAdminRoutingHistory=[];
+ if(!cc.acceptHistory)cc.acceptHistory=[];
+ const active=cc.acceptHistory[cc.acceptHistory.length-1];
+ if(active&&!active.closedIso){active.closedIso=stamp();active.outcome='Routed by Medical Administration On-Call';active.excessMs=Math.max(0,msSince(active.acceptedIso)-ATTENDANCE_LIMIT_MS)}
+ cc.medAdminRoutingHistory.push({fromLevel:cc.currentLevel,toLevel,targetId,targetName,reason,byId:u.id,by:u.name,iso:stamp()});
+ cc.events.push({t:now(),e:'Medical Administration On-Call routed consultation',d:u.name+' • '+cc.currentLevel+' → '+toLevel+' • '+targetName+' • Reason: '+reason});
+ cc.currentLevel=toLevel;cc.status='Routed by Medical Administration On-Call to '+toLevel+' — awaiting acceptance';
+ cc.accepted=false;cc.acceptedBy=null;cc.acceptedById=null;cc.acceptedAt=null;cc.acceptedIso=null;cc.acceptedLevel=null;cc.delayPhase=null;cc.recontactStartedIso=null;cc.recontactDeadlineIso=null;
+ addAudit('Medical Administration On-Call route',cc.specialty+' • '+toLevel+' • '+targetName+' • '+reason,cc.id);
+ if(targetId)notifyUser(targetId,'Consultation routed by Medical Administration On-Call: '+cc.patientName+' • '+cc.specialty+' • '+toLevel,cc.id);
+ if(toLevel==='Head of Department')notifySpecialtyHod(cc.specialty,'Consultation routed to HOD by Medical Administration On-Call: '+cc.patientName,cc.id);
+ save();closeMedAdminRoute();render()
+}
+function specialtyTeamCard(spec){
+ const r=getRota(spec,localDateKey())||{};
+ const members=[
+   {label:'First On-Call',id:r.firstId,name:r.first},
+   {label:'Second On-Call',id:r.secondId,name:r.second},
+   {label:'Third On-Call',id:r.thirdId,name:r.third},
+   {label:'Head of Department',id:r.hodId,name:r.hod}
+ ];
+ return '<div class="listCard"><h3>'+esc(spec)+'</h3><div class="sub" style="margin-bottom:8px">Effective '+esc(dateLabel(localDateKey()))+'</div>'+
+ members.map(m=>{const p=m.id?profiles[m.id]:null;return '<div class="profileLine"><span>'+esc(m.label)+'</span><div><b>'+esc(m.name||'GAP')+'</b>'+(p?'<div class="staffMeta">'+esc(p.rank||'')+(p.mobile?' • '+esc(p.mobile):'')+(p.whatsapp?' • WhatsApp '+esc(p.whatsapp):'')+'</div>':'')+'</div></div>'}).join('')+'</div>'
+}
 function renderMedAdminOnCall(){
- const open=state.cases.filter(x=>!x.arrival&&!String(x.status||'').includes('Redirected')),risk=state.cases.filter(x=>x.careAffected||x.safety?.active||x.currentLevel==='Medical Administration On-Call');
- document.getElementById('app').innerHTML='<div class="sectionTitle"><div><h1>Medical Administration On-Call</h1><div class="sub">Operational escalation oversight across all specialties.</div></div><span class="scopeTag">All specialties</span></div>'+
- '<div class="kpis"><div class="kpi"><span>Open consultations</span><b>'+open.length+'</b></div><div class="kpi"><span>Care-affecting delays</span><b>'+state.cases.filter(x=>x.careAffected).length+'</b></div><div class="kpi"><span>Safety Admissions</span><b>'+state.cases.filter(x=>x.safety?.active).length+'</b></div><div class="kpi"><span>At Med Admin level</span><b>'+state.cases.filter(x=>x.currentLevel==='Medical Administration On-Call'&&!x.arrival).length+'</b></div><div class="kpi"><span>Redirects</span><b>'+state.cases.filter(x=>x.redirect).length+'</b></div></div>'+
- '<div class="adminGrid" style="margin-top:14px"><div class="card"><h2>Escalation / Safety Queue</h2>'+risk.map(x=>'<div class="listCard"><b>'+esc(x.patientName)+' • '+esc(x.specialty)+'</b><div class="sub">'+esc(x.status)+' • '+esc(x.currentLevel)+'</div>'+timerHtml(x,true)+safetyTimerHtml(x)+'</div>').join('')+'</div><div class="card"><h2>Rota Overview</h2>'+Object.keys(state.rota).map(renderRotaCard).join('<hr>')+'</div></div>'+
+ const open=state.cases.filter(x=>!x.arrival&&!String(x.status||'').includes('Redirected')),
+       assigned=state.cases.filter(x=>x.currentLevel==='Medical Administration On-Call'&&!x.arrival&&!String(x.status||'').includes('Redirected')),
+       risk=state.cases.filter(x=>x.careAffected||x.safety?.active||x.currentLevel==='Medical Administration On-Call');
+ const queue=assigned.length?assigned:risk;
+ const queueHtml=queue.length?queue.map(x=>{
+   const ref=referralSource(x);
+   return '<div class="listCard"><div class="actions" style="justify-content:space-between;align-items:flex-start"><div><b>'+esc(x.patientName)+' • '+esc(x.specialty)+'</b><div class="sub">Bed '+esc(x.bed)+' • Referred by '+esc(ref.clinician)+' from '+esc(ref.source)+'</div><div class="sub">'+esc(x.status)+' • '+esc(x.currentLevel)+'</div></div><button class="btn primary smallBtn" onclick="openMedAdminRoute(\''+x.id+'\')">Route Consultation</button></div>'+timerHtml(x,true)+safetyTimerHtml(x)+'</div>'
+ }).join(''):'<div class="empty"><b>No consultation currently assigned to Medical Administration On-Call</b>Escalated cases will appear here with routing controls.</div>';
+ document.getElementById('app').innerHTML='<div class="sectionTitle"><div><h1>Medical Administration On-Call</h1><div class="sub">Hospital-wide escalation oversight and consultation routing, organized by specialty.</div></div><span class="scopeTag">All specialties</span></div>'+
+ '<div class="kpis"><div class="kpi"><span>Open consultations</span><b>'+open.length+'</b></div><div class="kpi"><span>Care-affecting delays</span><b>'+state.cases.filter(x=>x.careAffected).length+'</b></div><div class="kpi"><span>Safety Admissions</span><b>'+state.cases.filter(x=>x.safety?.active).length+'</b></div><div class="kpi"><span>Assigned to Med Admin On-Call</span><b>'+assigned.length+'</b></div><div class="kpi"><span>Redirects</span><b>'+state.cases.filter(x=>x.redirect).length+'</b></div></div>'+
+ '<div class="card" style="margin-top:14px"><h2>Consultations Requiring Medical Administration On-Call</h2><div class="notice"><b>Routing authority:</b> for a consultation reaching Medical Administration On-Call, you can route it to the specialty\'s First On-Call, Second On-Call, Third On-Call, Head of Department, or keep it at Medical Administration On-Call. The selected person must then Accept Consultation before their attendance clock begins.</div>'+queueHtml+'</div>'+
+ '<div class="card" style="margin-top:14px"><div class="sectionTitle"><div><h2 style="margin:0">On-Call Teams by Specialty</h2><div class="sub">Each department is shown separately to avoid mixing physicians from different specialties.</div></div><span class="scopeTag">'+esc(dateLabel(localDateKey()))+'</span></div>'+
+ '<div class="adminGrid">'+Object.keys(ROTA).map(specialtyTeamCard).join('')+'</div>'+
+ '<div class="listCard"><h3>Medical Administration</h3><div class="profileLine"><span>On-Call</span><div><b>'+esc(profiles.MEDON1.name)+'</b><div class="staffMeta">'+esc(profiles.MEDON1.mobile||'')+' • WhatsApp '+esc(profiles.MEDON1.whatsapp||'')+'</div></div></div><div class="profileLine"><span>Administration</span><div><b>'+esc(profiles.MEDADM1.name)+'</b></div></div></div></div>'+
  '<div class="card" style="margin-top:14px"><h2>On-Call Alerts</h2>'+notificationHtml()+'</div>'+roleNav()
 }
 function openStaffModal(id){
