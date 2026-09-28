@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>ConsultFlow ED — V1</title>
 <style>
 :root{--navy:#08365f;--blue:#0b66e4;--bg:#f3f7fb;--card:#fff;--line:#dbe6f2;--text:#10243e;--muted:#64748b;--green:#15803d;--amber:#b45309;--red:#b91c1c;--purple:#6d28d9}
@@ -24,13 +27,13 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
 .modal{position:fixed;inset:0;background:rgba(2,12,27,.55);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}.modal.open{display:flex}.modalbox{background:white;border-radius:18px;padding:18px;max-width:760px;width:100%;max-height:92vh;overflow:auto}
 .modalhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.x{border:0;background:#eef2f7;border-radius:9px;padding:8px 10px;cursor:pointer}
 .mobile{max-width:430px;margin:auto}.phone{border:1px solid #cbd5e1;border-radius:28px;padding:14px;background:white;box-shadow:0 20px 50px rgba(0,0,0,.12)}.phoneTop{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-bottom:12px}
-.roleLinks{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.roleLinks a{color:var(--blue);font-size:12px;text-decoration:none}.profileLine{display:grid;grid-template-columns:140px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}.profileLine span:first-child{color:var(--muted)}.isbarTable{width:100%;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}.isbarRow{display:grid;grid-template-columns:155px 1fr;border-bottom:1px solid var(--line)}.isbarRow:last-child{border-bottom:0}.isbarKey{padding:11px;background:#f4f8fc;font-weight:800;font-size:12px}.isbarKey b{display:inline-flex;width:24px;height:24px;border-radius:7px;background:#dbeafe;color:#1d4ed8;align-items:center;justify-content:center;margin-right:6px}.isbarValue{padding:9px}.isbarValue textarea{min-height:58px}.isbarRead{padding:11px;font-size:13px;white-space:pre-wrap}.requiredNote{font-size:11px;color:#b91c1c;margin-top:7px}
+.roleLinks{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.roleLinks a{color:var(--blue);font-size:12px;text-decoration:none}.profileLine{display:grid;grid-template-columns:140px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}.profileLine span:first-child{color:var(--muted)}.isbarTable{display:grid;gap:10px;width:100%}.isbarCard{border:1px solid #bfd2e7;border-radius:12px;background:#fff;overflow:hidden}.isbarHead{padding:9px 11px;background:#eef5ff;font-weight:800;font-size:12px;border-bottom:1px solid #d6e5f5}.isbarHead b{display:inline-flex;width:26px;height:26px;border-radius:8px;background:#0b66e4;color:#fff;align-items:center;justify-content:center;margin-right:7px}.isbarBody{padding:10px}.isbarBody textarea{min-height:72px;border:1px solid #a9c4df;background:#fff}.isbarRead{padding:11px;font-size:13px;white-space:pre-wrap;min-height:46px}.requiredNote{font-size:11px;color:#b91c1c;margin-top:7px}
 @media(max-width:850px){.g4,.g2,.formgrid{grid-template-columns:1fr}.span2{grid-column:auto}.wrap{padding:12px}.desktopOnly{display:none}header{align-items:flex-start}.user{font-size:11px}.profileLine{grid-template-columns:110px 1fr}}
 </style>
 </head>
 <body>
 <header>
-  <div class="brand">ConsultFlow ED<small>V1 Clinical Workflow Prototype</small></div>
+  <div class="brand">ConsultFlow ED<small>V1.1 Clinical Workflow Prototype</small></div>
   <div class="user" id="userBox"></div>
 </header>
 <div class="wrap" id="app"></div>
@@ -41,8 +44,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
     <div class="banner alert"><b>Public demo only:</b> Do not enter real patient identifiers or real phone numbers in this GitHub Pages prototype.</div>
     <div class="formgrid">
       <div class="field span2"><label>Patient Full Name — Triple Name *</label><input id="fName" placeholder="e.g. Mohammed Ali Hassan"></div>
-      <div class="field"><label>Medical Record Number (MRN)</label><input id="fMrn" placeholder="MRN"></div>
-      <div class="field"><label>National ID / Iqama Number</label><input id="fNationalId" placeholder="National ID / Iqama"></div>
+      <div class="field span2"><label>Medical Record Number (MRN) / National ID / Iqama *</label><input id="fIdentifier" placeholder="Enter MRN or National ID / Iqama"></div>
       <div class="field"><label>Bed / Room Number *</label><input id="fBed" placeholder="e.g. ED-B12"></div>
       <div class="field"><label>Specialty *</label><select id="fSpec">
         <option value="">Select specialty</option><option>Orthopedics</option><option>Internal Medicine</option><option>General Surgery</option><option>Cardiology</option><option>Neurosurgery</option>
@@ -53,16 +55,16 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
       <div class="field span2">
         <label>I-SBAR Communication — Mandatory *</label>
         <div class="isbarTable">
-          <div class="isbarRow"><div class="isbarKey"><b>I</b>Identification</div><div class="isbarValue"><textarea id="fIsbarI" placeholder="Identify yourself/service, patient, location/bed, and key identifiers"></textarea></div></div>
-          <div class="isbarRow"><div class="isbarKey"><b>S</b>Situation</div><div class="isbarValue"><textarea id="fIsbarS" placeholder="What is happening now? Why is this consultation needed?"></textarea></div></div>
-          <div class="isbarRow"><div class="isbarKey"><b>B</b>Background</div><div class="isbarValue"><textarea id="fIsbarB" placeholder="Relevant history, diagnosis, procedures, medications, investigations"></textarea></div></div>
-          <div class="isbarRow"><div class="isbarKey"><b>A</b>Assessment</div><div class="isbarValue"><textarea id="fIsbarA" placeholder="ED assessment, examination, vital signs, key results, clinical impression"></textarea></div></div>
-          <div class="isbarRow"><div class="isbarKey"><b>R</b>Recommendation</div><div class="isbarValue"><textarea id="fIsbarR" placeholder="Exactly what ED is requesting from the receiving specialty"></textarea></div></div>
+          <div class="isbarCard"><div class="isbarHead"><b>I</b>Identification *</div><div class="isbarBody"><textarea id="fIsbarI" placeholder="Identify patient, ED location/bed, key identifiers and referring clinician/service"></textarea></div></div>
+          <div class="isbarCard"><div class="isbarHead"><b>S</b>Situation *</div><div class="isbarBody"><textarea id="fIsbarS" placeholder="Current problem and why this consultation is required now"></textarea></div></div>
+          <div class="isbarCard"><div class="isbarHead"><b>B</b>Background *</div><div class="isbarBody"><textarea id="fIsbarB" placeholder="Relevant history, diagnosis, procedures, medications and investigations"></textarea></div></div>
+          <div class="isbarCard"><div class="isbarHead"><b>A</b>Assessment *</div><div class="isbarBody"><textarea id="fIsbarA" placeholder="ED assessment, examination, vital signs, key results and clinical impression"></textarea></div></div>
+          <div class="isbarCard"><div class="isbarHead"><b>R</b>Recommendation *</div><div class="isbarBody"><textarea id="fIsbarR" placeholder="Exactly what ED is requesting from the receiving specialty"></textarea></div></div>
         </div>
-        <div class="requiredNote">All five I-SBAR sections must be completed before the consultation can be sent.</div>
+        <div class="requiredNote">Each I-SBAR item is a separate mandatory box. All five must be completed before sending.</div>
       </div>
     </div>
-    <div class="banner info" style="margin-top:12px">At least one identifier is required: MRN or National ID/Iqama. All five I-SBAR sections are mandatory. The system assigns the current First On-Call from the rota.</div>
+    <div class="banner info" style="margin-top:12px">MRN / National ID / Iqama is mandatory in one identifier field. All five I-SBAR sections are separate mandatory boxes.</div>
     <div class="actions" style="justify-content:flex-end"><button class="btn secondary" onclick="closeNew()">Cancel</button><button class="btn primary" onclick="createConsultation()">Create & Send Consultation</button></div>
   </div>
 </div>
@@ -121,6 +123,7 @@ function badge(txt,c){return '<span class="badge '+c+'">'+txt+'</span>'}
 function selected(){return state.cases.find(c=>c.id===state.selected)||state.cases[0]||null}
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function maskId(v){v=String(v||'');if(v.length<=4)return v;return '••••••'+v.slice(-4)}
+function patientIdentifier(c){return c.identifier||c.mrn||c.nationalId||'—'}
 function openNew(){document.getElementById('newModal').classList.add('open')}
 function closeNew(){document.getElementById('newModal').classList.remove('open')}
 function openProfile(){
@@ -136,18 +139,17 @@ function getRota(spec){
  return {first:r.firstId?profiles[r.firstId].name:r.first,firstId:r.firstId||null,second:r.secondId?profiles[r.secondId].name:r.second,secondId:r.secondId||null,third:r.third,hod:r.hod}
 }
 function createConsultation(){
- const patientName=document.getElementById('fName').value.trim(),mrn=document.getElementById('fMrn').value.trim(),nationalId=document.getElementById('fNationalId').value.trim(),bed=document.getElementById('fBed').value.trim(),spec=document.getElementById('fSpec').value,priority=document.getElementById('fPriority').value,patient=document.getElementById('fPatient').value.trim()||autoRef(),reason=document.getElementById('fReason').value.trim();
+ const patientName=document.getElementById('fName').value.trim(),identifier=document.getElementById('fIdentifier').value.trim(),bed=document.getElementById('fBed').value.trim(),spec=document.getElementById('fSpec').value,priority=document.getElementById('fPriority').value,patient=document.getElementById('fPatient').value.trim()||autoRef(),reason=document.getElementById('fReason').value.trim();
  const isbar={i:document.getElementById('fIsbarI').value.trim(),s:document.getElementById('fIsbarS').value.trim(),b:document.getElementById('fIsbarB').value.trim(),a:document.getElementById('fIsbarA').value.trim(),r:document.getElementById('fIsbarR').value.trim()};
- if(!patientName||!bed||!spec||!reason){alert('Patient full name, bed/room, specialty, and reason are required.');return}
- if(!mrn&&!nationalId){alert('Enter at least one patient identifier: MRN or National ID/Iqama.');return}
- if(!isbar.i||!isbar.s||!isbar.b||!isbar.a||!isbar.r){alert('I-SBAR is mandatory. Complete Identification, Situation, Background, Assessment, and Recommendation before sending the consultation.');return}
+ if(!patientName||!identifier||!bed||!spec||!reason){alert('Patient full name, MRN / National ID, bed/room, specialty, and reason are mandatory.');return}
+ if(!isbar.i||!isbar.s||!isbar.b||!isbar.a||!isbar.r){alert('I-SBAR is mandatory. Complete all five separate boxes: Identification, Situation, Background, Assessment, and Recommendation.');return}
  const rota=getRota(spec),id='C-'+Date.now(),journey='PJ-'+new Date().getFullYear()+'-'+String(Math.floor(Math.random()*900000)+100000),u=me();
- const c={id,patient,patientName,mrn,nationalId,bed,specialty:spec,priority,reason,isbar,journey,createdAt:now(),createdIso:stamp(),createdBy:u.name,status:'Pending First On-Call',currentLevel:'First On-Call',first:rota.first,firstId:rota.firstId,second:rota.second,secondId:rota.secondId,third:rota.third,hod:rota.hod,accepted:false,acceptedBy:null,acceptedAt:null,arrival:false,arrivalAt:null,otp:null,otpBy:null,safety:false,events:[]};
+ const c={id,patient,patientName,identifier,bed,specialty:spec,priority,reason,isbar,journey,createdAt:now(),createdIso:stamp(),createdBy:u.name,status:'Pending First On-Call',currentLevel:'First On-Call',first:rota.first,firstId:rota.firstId,second:rota.second,secondId:rota.secondId,third:rota.third,hod:rota.hod,accepted:false,acceptedBy:null,acceptedAt:null,arrival:false,arrivalAt:null,otp:null,otpBy:null,safety:false,events:[]};
  c.events.push({t:c.createdAt,e:'Consultation created',d:u.name+' → '+spec+' • '+patientName+' • Bed '+bed});
- c.events.push({t:c.createdAt,e:'Mandatory I-SBAR completed',d:'I / S / B / A / R documented before sending'});
+ c.events.push({t:c.createdAt,e:'Mandatory I-SBAR completed',d:'Five separate I / S / B / A / R boxes completed'});
  c.events.push({t:c.createdAt,e:'First On-Call notified',d:rota.first+' • WhatsApp attention-call profile '+(rota.firstId&&profiles[rota.firstId].whatsappEnabled?'enabled':'not configured')});
- state.cases.unshift(c);state.selected=id;addAudit('Create consultation',patientName+' • '+patient+' • '+spec+' • Bed '+bed+' • I-SBAR complete',id);save();closeNew();
- ['fName','fMrn','fNationalId','fBed','fPatient','fReason','fIsbarI','fIsbarS','fIsbarB','fIsbarA','fIsbarR'].forEach(x=>document.getElementById(x).value='');document.getElementById('fSpec').value='';render();
+ state.cases.unshift(c);state.selected=id;addAudit('Create consultation',patientName+' • '+patient+' • '+spec+' • Bed '+bed+' • identifier + I-SBAR complete',id);save();closeNew();
+ ['fName','fIdentifier','fBed','fPatient','fReason','fIsbarI','fIsbarS','fIsbarB','fIsbarA','fIsbarR'].forEach(x=>document.getElementById(x).value='');document.getElementById('fSpec').value='';render();
 }
 function selectCase(id){state.selected=id;save();render()}
 function generateOTP(){
@@ -175,7 +177,8 @@ function statusBadge(c){
 function renderIsbar(c){
  const x=c.isbar||{};
  if(!x.i&&!x.s&&!x.b&&!x.a&&!x.r&&c.summary){return '<div class="banner info"><b>Legacy I-SBAR summary</b><br>'+esc(c.summary)+'</div>'}
- return '<div class="isbarTable"><div class="isbarRow"><div class="isbarKey"><b>I</b>Identification</div><div class="isbarRead">'+esc(x.i||'—')+'</div></div><div class="isbarRow"><div class="isbarKey"><b>S</b>Situation</div><div class="isbarRead">'+esc(x.s||'—')+'</div></div><div class="isbarRow"><div class="isbarKey"><b>B</b>Background</div><div class="isbarRead">'+esc(x.b||'—')+'</div></div><div class="isbarRow"><div class="isbarKey"><b>A</b>Assessment</div><div class="isbarRead">'+esc(x.a||'—')+'</div></div><div class="isbarRow"><div class="isbarKey"><b>R</b>Recommendation</div><div class="isbarRead">'+esc(x.r||'—')+'</div></div></div>'
+ const card=(letter,title,value)=>'<div class="isbarCard"><div class="isbarHead"><b>'+letter+'</b>'+title+'</div><div class="isbarRead">'+esc(value||'—')+'</div></div>';
+ return '<div class="isbarTable">'+card('I','Identification',x.i)+card('S','Situation',x.s)+card('B','Background',x.b)+card('A','Assessment',x.a)+card('R','Recommendation',x.r)+'</div>'
 }
 function physicianContact(c){
  const pid=c.currentLevel==='Second On-Call'?c.secondId:c.firstId,p=pid?profiles[pid]:null;if(!p)return '<div class="banner info">No linked individual physician profile for this rota entry.</div>';
@@ -184,7 +187,7 @@ function physicianContact(c){
 function renderED(){
  const c=selected(),active=state.cases.filter(x=>!x.arrival&&!x.status.includes('Redirected')).length;
  let rows=state.cases.map(x=>'<tr><td><button class="linkbtn" onclick="selectCase(\''+x.id+'\')">'+esc(x.patientName)+'</button><div class="sub">'+esc(x.patient)+' • '+esc(x.journey)+'</div></td><td>'+esc(x.bed)+'</td><td>'+esc(x.specialty)+'</td><td>'+statusBadge(x)+'</td><td>'+esc(x.currentLevel)+'</td><td>'+esc(x.createdAt)+'</td></tr>').join('');
- let detail=c?'<div class="grid g2" style="margin-top:14px"><div class="card"><h2>Selected Consultation</h2><div class="sub">'+esc(c.journey)+' • '+esc(c.patient)+'</div><h3 style="margin:6px 0">'+esc(c.patientName)+'</h3><div class="profileLine"><span>MRN</span><span>'+esc(c.mrn||'—')+'</span></div><div class="profileLine"><span>National ID</span><span>'+esc(c.nationalId?maskId(c.nationalId):'—')+'</span></div><div class="profileLine"><span>Bed / Room</span><b>'+esc(c.bed)+'</b></div><div class="profileLine"><span>Specialty</span><span>'+esc(c.specialty)+'</span></div><div class="profileLine"><span>Reason</span><span>'+esc(c.reason)+'</span></div><div style="margin-top:14px"><h3 style="margin-bottom:8px">Mandatory I-SBAR</h3>'+renderIsbar(c)+'</div><div style="margin:12px 0">'+statusBadge(c)+'</div><table><tr><th>Rota Level</th><th>Assigned</th></tr><tr><td>First On-Call</td><td>'+esc(c.first)+'</td></tr><tr><td>Second On-Call</td><td>'+esc(c.second)+'</td></tr><tr><td>Third On-Call</td><td>'+esc(c.third)+'</td></tr><tr><td>Head of Department</td><td>'+esc(c.hod)+'</td></tr></table><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="generateOTP()">Generate Arrival OTP</button><button class="btn success" onclick="whatsappAttention()">WhatsApp Attention Call</button><button class="btn warn" onclick="escalateSecond()">Escalate to Second</button><button class="btn secondary" onclick="redirectCase()">Close & Redirect</button><button class="btn danger" onclick="safety()">Safety Admission</button></div></div><div><div class="card"><h2>Current Physician Profile</h2>'+physicianContact(c)+'</div><div class="card" style="margin-top:14px"><h2>OTP & Physical Arrival</h2>'+(c.otp?'<div class="otp">'+c.otp+'</div><p class="sub">Patient '+esc(c.patientName)+' • '+esc(c.specialty)+' • Generated by '+esc(c.otpBy)+'</p>':'<div class="banner info">No active OTP for this consultation.</div>')+'<div class="banner '+(c.arrival?'ok':'info')+'">'+(c.arrival?'Physical arrival verified at '+esc(c.arrivalAt):'Attendance is complete only after the receiving physician enters the patient-specific ED OTP.')+'</div></div></div></div><div class="card" style="margin-top:14px"><h2>Patient Journey Audit Trail</h2><div class="timeline">'+c.events.map(x=>'<div class="event"><div>'+esc(x.t)+'</div><div class="dot"></div><div><b>'+esc(x.e)+'</b><small>'+esc(x.d)+'</small></div></div>').join('')+'</div></div>':'';
+ let detail=c?'<div class="grid g2" style="margin-top:14px"><div class="card"><h2>Selected Consultation</h2><div class="sub">'+esc(c.journey)+' • '+esc(c.patient)+'</div><h3 style="margin:6px 0">'+esc(c.patientName)+'</h3><div class="profileLine"><span>MRN / National ID</span><span>'+esc(patientIdentifier(c))+'</span></div><div class="profileLine"><span>Bed / Room</span><b>'+esc(c.bed)+'</b></div><div class="profileLine"><span>Specialty</span><span>'+esc(c.specialty)+'</span></div><div class="profileLine"><span>Reason</span><span>'+esc(c.reason)+'</span></div><div style="margin-top:14px"><h3 style="margin-bottom:8px">Mandatory I-SBAR</h3>'+renderIsbar(c)+'</div><div style="margin:12px 0">'+statusBadge(c)+'</div><table><tr><th>Rota Level</th><th>Assigned</th></tr><tr><td>First On-Call</td><td>'+esc(c.first)+'</td></tr><tr><td>Second On-Call</td><td>'+esc(c.second)+'</td></tr><tr><td>Third On-Call</td><td>'+esc(c.third)+'</td></tr><tr><td>Head of Department</td><td>'+esc(c.hod)+'</td></tr></table><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="generateOTP()">Generate Arrival OTP</button><button class="btn success" onclick="whatsappAttention()">WhatsApp Attention Call</button><button class="btn warn" onclick="escalateSecond()">Escalate to Second</button><button class="btn secondary" onclick="redirectCase()">Close & Redirect</button><button class="btn danger" onclick="safety()">Safety Admission</button></div></div><div><div class="card"><h2>Current Physician Profile</h2>'+physicianContact(c)+'</div><div class="card" style="margin-top:14px"><h2>OTP & Physical Arrival</h2>'+(c.otp?'<div class="otp">'+c.otp+'</div><p class="sub">Patient '+esc(c.patientName)+' • '+esc(c.specialty)+' • Generated by '+esc(c.otpBy)+'</p>':'<div class="banner info">No active OTP for this consultation.</div>')+'<div class="banner '+(c.arrival?'ok':'info')+'">'+(c.arrival?'Physical arrival verified at '+esc(c.arrivalAt):'Attendance is complete only after the receiving physician enters the patient-specific ED OTP.')+'</div></div></div></div><div class="card" style="margin-top:14px"><h2>Patient Journey Audit Trail</h2><div class="timeline">'+c.events.map(x=>'<div class="event"><div>'+esc(x.t)+'</div><div class="dot"></div><div><b>'+esc(x.e)+'</b><small>'+esc(x.d)+'</small></div></div>').join('')+'</div></div>':'';
  document.getElementById('app').innerHTML='<div class="actions" style="justify-content:space-between;align-items:center;margin-bottom:14px"><div><h1>ED Live Workspace</h1><div class="sub">All ED consultations visible live to authorized ED users.</div></div><button class="btn primary" onclick="openNew()">＋ New Consultation</button></div>'+
  '<div class="grid g4"><div class="card metric"><span>Active consultations</span><b>'+active+'</b><span>Open ED consults</span></div><div class="card metric"><span>Total created</span><b>'+state.cases.length+'</b><span>This demo browser</span></div><div class="card metric"><span>Awaiting arrival</span><b>'+state.cases.filter(x=>x.accepted&&!x.arrival).length+'</b><span>Accepted, not yet OTP verified</span></div><div class="card metric"><span>Safety Admissions</span><b>'+state.cases.filter(x=>x.safety).length+'</b><span>Open / historical</span></div></div>'+
  '<div class="card" style="margin-top:14px"><div class="actions" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">Active Consultations Board</h2><div class="sub">Patient name, bed, specialty, status and escalation level.</div></div><button class="btn secondary" onclick="resetDemo()">Reset Demo</button></div>'+
@@ -198,7 +201,7 @@ function physicianCases(){
 function renderPhysician(){
  const list=physicianCases(),c=list[0]||null,roleLabel=uid==='ORTH1'?'FIRST ON-CALL':'SECOND ON-CALL';
  document.getElementById('app').innerHTML='<div class="mobile"><div class="phone"><div class="phoneTop"><span>Secure mobile view</span><span>'+roleLabel+'</span></div>'+
- (c?'<div class="card" style="box-shadow:none"><div class="sub">Incoming ED consultation</div><h1 style="margin-top:4px">'+esc(c.specialty)+'</h1><p><b>'+esc(c.patientName)+'</b><br>'+esc(c.patient)+' • Bed '+esc(c.bed)+'</p><div class="profileLine"><span>MRN</span><span>'+esc(c.mrn||'—')+'</span></div><div class="profileLine"><span>National ID</span><span>'+esc(c.nationalId?maskId(c.nationalId):'—')+'</span></div><div style="margin:10px 0">'+badge(roleLabel,uid==='ORTH1'?'bblue':'bpurple')+'</div><div class="banner info"><b>Reason</b><br>'+esc(c.reason)+'</div><h3 style="margin:12px 0 8px">I-SBAR</h3>'+renderIsbar(c)+
+ (c?'<div class="card" style="box-shadow:none"><div class="sub">Incoming ED consultation</div><h1 style="margin-top:4px">'+esc(c.specialty)+'</h1><p><b>'+esc(c.patientName)+'</b><br>'+esc(c.patient)+' • Bed '+esc(c.bed)+'</p><div class="profileLine"><span>MRN / National ID</span><span>'+esc(patientIdentifier(c))+'</span></div><div style="margin:10px 0">'+badge(roleLabel,uid==='ORTH1'?'bblue':'bpurple')+'</div><div class="banner info"><b>Reason</b><br>'+esc(c.reason)+'</div><h3 style="margin:12px 0 8px">I-SBAR</h3>'+renderIsbar(c)+
  (!c.accepted?'<button class="btn primary" style="width:100%" onclick="accept(\''+c.id+'\')">Accept Consultation</button>':'<div class="banner ok"><b>Consultation accepted.</b><br>30-minute attendance clock started at '+esc(c.acceptedAt)+'.</div>')+
  (c.accepted&&!c.arrival?'<div class="field" style="margin-top:12px"><label>ED physical-arrival OTP</label><input id="otpInput" inputmode="numeric" maxlength="6" placeholder="6-digit code"><button class="btn success" onclick="verify(\''+c.id+'\')" style="margin-top:8px">Verify Physical Arrival</button></div>':'')+
  (c.arrival?'<div class="banner ok"><b>Physical attendance verified</b><br>'+esc(c.arrivalAt)+'</div>':'')+
