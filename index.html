@@ -27,13 +27,13 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
 .modal{position:fixed;inset:0;background:rgba(2,12,27,.55);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}.modal.open{display:flex}.modalbox{background:white;border-radius:18px;padding:18px;max-width:760px;width:100%;max-height:92vh;overflow:auto}
 .modalhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.x{border:0;background:#eef2f7;border-radius:9px;padding:8px 10px;cursor:pointer}
 .mobile{max-width:430px;margin:auto}.phone{border:1px solid #cbd5e1;border-radius:28px;padding:14px;background:white;box-shadow:0 20px 50px rgba(0,0,0,.12)}.phoneTop{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-bottom:12px}
-.roleLinks{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.roleLinks a{color:var(--blue);font-size:12px;text-decoration:none}.profileLine{display:grid;grid-template-columns:140px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}.profileLine span:first-child{color:var(--muted)}.isbarTable{display:grid;gap:10px;width:100%}.isbarCard{border:1px solid #bfd2e7;border-radius:12px;background:#fff;overflow:hidden}.isbarHead{padding:9px 11px;background:#eef5ff;font-weight:800;font-size:12px;border-bottom:1px solid #d6e5f5}.isbarHead b{display:inline-flex;width:26px;height:26px;border-radius:8px;background:#0b66e4;color:#fff;align-items:center;justify-content:center;margin-right:7px}.isbarBody{padding:10px}.isbarBody textarea{min-height:72px;border:1px solid #a9c4df;background:#fff}.isbarRead{padding:11px;font-size:13px;white-space:pre-wrap;min-height:46px}.requiredNote{font-size:11px;color:#b91c1c;margin-top:7px}
+.roleLinks{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.roleLinks a{color:var(--blue);font-size:12px;text-decoration:none}.profileLine{display:grid;grid-template-columns:140px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}.profileLine span:first-child{color:var(--muted)}.isbarTable{display:grid;gap:10px;width:100%}.isbarCard{border:1px solid #bfd2e7;border-radius:12px;background:#fff;overflow:hidden}.isbarHead{padding:9px 11px;background:#eef5ff;font-weight:800;font-size:12px;border-bottom:1px solid #d6e5f5}.isbarHead b{display:inline-flex;width:26px;height:26px;border-radius:8px;background:#0b66e4;color:#fff;align-items:center;justify-content:center;margin-right:7px}.isbarBody{padding:10px}.isbarBody textarea{min-height:72px;border:1px solid #a9c4df;background:#fff}.isbarRead{padding:11px;font-size:13px;white-space:pre-wrap;min-height:46px}.requiredNote{font-size:11px;color:#b91c1c;margin-top:7px}.timerBox{border:1px solid #bfd2e7;border-radius:14px;padding:14px;background:#f8fbff;margin:10px 0}.timerLabel{font-size:11px;color:var(--muted);text-transform:uppercase;font-weight:800}.timerValue{font-size:28px;font-weight:900;letter-spacing:1px;margin:4px 0}.timerValue.overdue{color:var(--red)}.timerValue.warnText{color:var(--amber)}.phasePanel{border:1px solid #f2c4c4;background:#fff7f7;border-radius:14px;padding:14px;margin-top:12px}.phasePanel h3{color:#991b1b;margin-bottom:7px}.kv{display:grid;grid-template-columns:120px 1fr;gap:8px;font-size:12px;padding:6px 0;border-bottom:1px solid var(--line)}.kv:last-child{border-bottom:0}.kv span:first-child{color:var(--muted)}
 @media(max-width:850px){.g4,.g2,.formgrid{grid-template-columns:1fr}.span2{grid-column:auto}.wrap{padding:12px}.desktopOnly{display:none}header{align-items:flex-start}.user{font-size:11px}.profileLine{grid-template-columns:110px 1fr}}
 </style>
 </head>
 <body>
 <header>
-  <div class="brand">ConsultFlow ED<small>V1.1 Clinical Workflow Prototype</small></div>
+  <div class="brand">ConsultFlow ED<small>V1.2 Clinical Workflow Prototype</small></div>
   <div class="user" id="userBox"></div>
 </header>
 <div class="wrap" id="app"></div>
@@ -124,6 +124,105 @@ function selected(){return state.cases.find(c=>c.id===state.selected)||state.cas
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 function maskId(v){v=String(v||'');if(v.length<=4)return v;return '••••••'+v.slice(-4)}
 function patientIdentifier(c){return c.identifier||c.mrn||c.nationalId||'—'}
+const TEST_TIMER=q.get('testtimer')==='1';
+const ATTENDANCE_LIMIT_MS=TEST_TIMER?30000:30*60*1000;
+const FINAL_RECONTACT_MS=TEST_TIMER?3000:3*60*1000;
+function msSince(iso){return iso?Math.max(0,Date.now()-new Date(iso).getTime()):0}
+function fmtDuration(ms){
+ ms=Math.max(0,Math.floor(ms/1000));const h=Math.floor(ms/3600),m=Math.floor((ms%3600)/60),s=ms%60;
+ return (h?String(h).padStart(2,'0')+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')
+}
+function currentAssignee(c){
+ if(c.currentLevel==='Second On-Call')return {id:c.secondId,name:c.second};
+ if(c.currentLevel==='Third On-Call')return {id:null,name:c.third};
+ if(c.currentLevel==='Head of Department')return {id:null,name:c.hod};
+ if(c.currentLevel==='Medical Administration On-Call')return {id:null,name:'Medical Administration On-Call'};
+ return {id:c.firstId,name:c.first}
+}
+function timerState(c){
+ if(c.arrival)return {kind:'stopped',label:'Attendance verified',value:c.arrivalAt||'Verified'};
+ if(!c.accepted||!c.acceptedIso)return {kind:'response',label:'Awaiting consultation acceptance',value:fmtDuration(msSince(c.createdIso))+' open'};
+ const elapsed=msSince(c.acceptedIso),remaining=ATTENDANCE_LIMIT_MS-elapsed;
+ if(remaining>0)return {kind:'running',label:'Attendance Clock — 30 min from Accept',value:fmtDuration(remaining)+' remaining'};
+ return {kind:'overdue',label:'Attendance delay > 30 min',value:fmtDuration(-remaining)+' overdue'}
+}
+function timerHtml(c,compact){
+ const t=timerState(c),cls=t.kind==='overdue'?'overdue':(t.kind==='running'?'warnText':'');
+ return '<div class="timerBox"><div class="timerLabel">'+esc(t.label)+'</div><div class="timerValue '+cls+'" data-timer-case="'+c.id+'">'+esc(t.value)+'</div>'+
+ (c.acceptedBy?'<div class="sub">Accepted by '+esc(c.acceptedBy)+(c.acceptedLevel?' • '+esc(c.acceptedLevel):'')+'</div>':'')+
+ (TEST_TIMER?'<div class="sub" style="color:#b45309"><b>TEST TIMER MODE:</b> 30 seconds + 3 seconds for demo only.</div>':'')+'</div>'
+}
+function updateTimerDom(){
+ document.querySelectorAll('[data-timer-case]').forEach(el=>{
+   const cc=state.cases.find(x=>x.id===el.getAttribute('data-timer-case'));if(!cc)return;
+   const t=timerState(cc);el.textContent=t.value;el.className='timerValue '+(t.kind==='overdue'?'overdue':(t.kind==='running'?'warnText':''));
+ });
+ document.querySelectorAll('[data-recontact-case]').forEach(el=>{
+   const cc=state.cases.find(x=>x.id===el.getAttribute('data-recontact-case'));if(!cc||!cc.recontactDeadlineIso)return;
+   el.textContent=fmtDuration(new Date(cc.recontactDeadlineIso).getTime()-Date.now())+' remaining';
+ });
+}
+function workflowTick(){
+ let changed=false;
+ for(const cc of state.cases){
+   if(cc.arrival||!cc.accepted||!cc.acceptedIso)continue;
+   const elapsed=msSince(cc.acceptedIso);
+   if(elapsed>=ATTENDANCE_LIMIT_MS&&!cc.delayPhase){
+     cc.delayPhase='awaiting_ed_decision';cc.status='>30 min — ED decision required';
+     cc.events.push({t:now(),e:'30-minute attendance threshold exceeded',d:'ED decision required: did the delay affect patient care and need escalation?'});
+     changed=true;
+   }
+   if(cc.delayPhase==='final_recontact'&&cc.recontactDeadlineIso&&Date.now()>=new Date(cc.recontactDeadlineIso).getTime()){
+     cc.delayPhase='awaiting_final_ed_decision';cc.status='Final escalation decision required';
+     cc.events.push({t:now(),e:'Final 3-minute re-contact window ended',d:'No physical arrival verified; ED escalation decision required'});
+     changed=true;
+   }
+ }
+ if(changed){save();render()} else updateTimerDom()
+}
+function startFinalRecontact(id){
+ const cc=state.cases.find(x=>x.id===id);if(!cc)return;
+ cc.delayPhase='final_recontact';cc.recontactStartedIso=stamp();cc.recontactDeadlineIso=new Date(Date.now()+FINAL_RECONTACT_MS).toISOString();cc.status='Final urgent re-contact — 3 min window';
+ const a=currentAssignee(cc);cc.events.push({t:now(),e:'ED chose escalation after 30-minute delay',d:'Final urgent app notification + WhatsApp attention call requested for '+a.name+'; 3-minute window started'});
+ addAudit('30-min delay decision: YES','Final re-contact initiated for '+a.name,cc.id);save();render()
+}
+function noEscalationAt30(id){
+ const cc=state.cases.find(x=>x.id===id);if(!cc)return;
+ cc.delayPhase='no_escalation';cc.delayDecisionAt30='NO';cc.status='Delayed >30 min — ED chose no escalation';
+ cc.events.push({t:now(),e:'ED delay decision: NO',d:'No escalation. Attendance timer continues and excess time remains attributed to the accepting physician.'});
+ addAudit('30-min delay decision: NO','No escalation; timer continues',cc.id);save();render()
+}
+function noEscalationFinal(id){
+ const cc=state.cases.find(x=>x.id===id);if(!cc)return;
+ cc.delayPhase='final_no_escalation';cc.status='Delayed — final ED decision: no escalation';
+ cc.events.push({t:now(),e:'Final ED escalation decision: NO',d:'No automatic escalation; delay timer continues.'});
+ addAudit('Final delay decision: NO','No escalation after final re-contact',cc.id);save();render()
+}
+function nextLevel(level){
+ if(level==='First On-Call')return 'Second On-Call';
+ if(level==='Second On-Call')return 'Third On-Call';
+ if(level==='Third On-Call')return 'Head of Department';
+ if(level==='Head of Department')return 'Medical Administration On-Call';
+ return 'Medical Administration On-Call'
+}
+function automaticEscalate(id){
+ const cc=state.cases.find(x=>x.id===id);if(!cc)return;
+ const fromLevel=cc.currentLevel,fromPhysician=cc.acceptedBy||currentAssignee(cc).name,toLevel=nextLevel(fromLevel);
+ if(!cc.acceptHistory)cc.acceptHistory=[];
+ const active=cc.acceptHistory[cc.acceptHistory.length-1];
+ if(active&&!active.closedIso){active.closedIso=stamp();active.outcome='Escalated after attendance delay';active.excessMs=Math.max(0,msSince(active.acceptedIso)-ATTENDANCE_LIMIT_MS)}
+ cc.events.push({t:now(),e:'Automatic escalation to '+toLevel,d:'Previous accepting physician: '+fromPhysician+'. Delay preserved in audit/KPI history.'});
+ cc.currentLevel=toLevel;cc.status='Escalated to '+toLevel+' — awaiting acceptance';
+ cc.accepted=false;cc.acceptedBy=null;cc.acceptedAt=null;cc.acceptedIso=null;cc.acceptedLevel=null;cc.delayPhase=null;cc.recontactStartedIso=null;cc.recontactDeadlineIso=null;
+ addAudit('Automatic escalation',fromLevel+' → '+toLevel,cc.id);save();render()
+}
+function delayDecisionHtml(c){
+ if(c.delayPhase==='awaiting_ed_decision')return '<div class="phasePanel"><h3>30-minute delay decision</h3><p><b>Physician delay exceeded 30 minutes.</b> Did this delay affect patient care and need to escalate?</p><div class="actions"><button class="btn danger" onclick="startFinalRecontact(\''+c.id+'\')">YES — Final Re-contact</button><button class="btn secondary" onclick="noEscalationAt30(\''+c.id+'\')">NO — Continue Waiting</button></div></div>';
+ if(c.delayPhase==='final_recontact')return '<div class="phasePanel"><h3>Final urgent re-contact</h3><p>App urgent notification + WhatsApp attention call requested. Waiting 3 minutes for physical arrival verification.</p><div class="timerValue warnText" data-recontact-case="'+c.id+'">'+fmtDuration(new Date(c.recontactDeadlineIso).getTime()-Date.now())+' remaining</div></div>';
+ if(c.delayPhase==='awaiting_final_ed_decision')return '<div class="phasePanel"><h3>Final escalation decision</h3><p>No physical arrival was verified during the final 3-minute window. Escalate automatically to the next rota level?</p><div class="actions"><button class="btn danger" onclick="automaticEscalate(\''+c.id+'\')">YES — Escalate Now</button><button class="btn secondary" onclick="noEscalationFinal(\''+c.id+'\')">NO — Continue Waiting</button></div></div>';
+ if(c.delayPhase==='no_escalation'||c.delayPhase==='final_no_escalation')return '<div class="banner info"><b>ED decision:</b> No escalation. The attendance delay timer continues and excess time remains attributed to the accepting physician.</div>';
+ return ''
+}
 function openNew(){document.getElementById('newModal').classList.add('open')}
 function closeNew(){document.getElementById('newModal').classList.remove('open')}
 function openProfile(){
@@ -144,7 +243,7 @@ function createConsultation(){
  if(!patientName||!identifier||!bed||!spec||!reason){alert('Patient full name, MRN / National ID, bed/room, specialty, and reason are mandatory.');return}
  if(!isbar.i||!isbar.s||!isbar.b||!isbar.a||!isbar.r){alert('I-SBAR is mandatory. Complete all five separate boxes: Identification, Situation, Background, Assessment, and Recommendation.');return}
  const rota=getRota(spec),id='C-'+Date.now(),journey='PJ-'+new Date().getFullYear()+'-'+String(Math.floor(Math.random()*900000)+100000),u=me();
- const c={id,patient,patientName,identifier,bed,specialty:spec,priority,reason,isbar,journey,createdAt:now(),createdIso:stamp(),createdBy:u.name,status:'Pending First On-Call',currentLevel:'First On-Call',first:rota.first,firstId:rota.firstId,second:rota.second,secondId:rota.secondId,third:rota.third,hod:rota.hod,accepted:false,acceptedBy:null,acceptedAt:null,arrival:false,arrivalAt:null,otp:null,otpBy:null,safety:false,events:[]};
+ const c={id,patient,patientName,identifier,bed,specialty:spec,priority,reason,isbar,journey,createdAt:now(),createdIso:stamp(),createdBy:u.name,status:'Pending First On-Call',currentLevel:'First On-Call',first:rota.first,firstId:rota.firstId,second:rota.second,secondId:rota.secondId,third:rota.third,hod:rota.hod,accepted:false,acceptedBy:null,acceptedAt:null,acceptedIso:null,acceptedLevel:null,acceptHistory:[],delayPhase:null,recontactStartedIso:null,recontactDeadlineIso:null,arrival:false,arrivalAt:null,arrivalIso:null,otp:null,otpBy:null,safety:false,events:[]};
  c.events.push({t:c.createdAt,e:'Consultation created',d:u.name+' → '+spec+' • '+patientName+' • Bed '+bed});
  c.events.push({t:c.createdAt,e:'Mandatory I-SBAR completed',d:'Five separate I / S / B / A / R boxes completed'});
  c.events.push({t:c.createdAt,e:'First On-Call notified',d:rota.first+' • WhatsApp attention-call profile '+(rota.firstId&&profiles[rota.firstId].whatsappEnabled?'enabled':'not configured')});
@@ -165,7 +264,9 @@ function redirectCase(){
  c.events.push({t:now(),e:'Closed & Redirected by ED',d:c.specialty+' → '+target+' • '+reason});c.status='Redirected by ED';addAudit('Close & Redirect Consultation',c.specialty+' → '+target+' • '+reason,c.id);save();render();
 }
 function escalateSecond(){
- const c=selected();if(!c)return;c.currentLevel='Second On-Call';c.status='Escalated to Second On-Call';c.events.push({t:now(),e:'Escalated to Second On-Call',d:c.second});addAudit('Escalate',c.second,c.id);save();render();
+ const c=selected();if(!c)return;
+ const from=c.currentLevel;c.currentLevel='Second On-Call';c.status='Escalated to Second On-Call — awaiting acceptance';c.accepted=false;c.acceptedBy=null;c.acceptedAt=null;c.acceptedIso=null;c.acceptedLevel=null;c.delayPhase=null;c.recontactStartedIso=null;c.recontactDeadlineIso=null;
+ c.events.push({t:now(),e:'Manual ED escalation to Second On-Call',d:c.second+' • previous stage '+from});addAudit('Manual escalation','→ Second On-Call: '+c.second,c.id);save();render();
 }
 function whatsappAttention(){
  const c=selected();if(!c)return;const pid=c.currentLevel==='Second On-Call'?c.secondId:c.firstId;const p=pid?profiles[pid]:null;if(!p||!p.whatsapp){alert('No WhatsApp number is configured for this physician profile.');return}
@@ -187,7 +288,7 @@ function physicianContact(c){
 function renderED(){
  const c=selected(),active=state.cases.filter(x=>!x.arrival&&!x.status.includes('Redirected')).length;
  let rows=state.cases.map(x=>'<tr><td><button class="linkbtn" onclick="selectCase(\''+x.id+'\')">'+esc(x.patientName)+'</button><div class="sub">'+esc(x.patient)+' • '+esc(x.journey)+'</div></td><td>'+esc(x.bed)+'</td><td>'+esc(x.specialty)+'</td><td>'+statusBadge(x)+'</td><td>'+esc(x.currentLevel)+'</td><td>'+esc(x.createdAt)+'</td></tr>').join('');
- let detail=c?'<div class="grid g2" style="margin-top:14px"><div class="card"><h2>Selected Consultation</h2><div class="sub">'+esc(c.journey)+' • '+esc(c.patient)+'</div><h3 style="margin:6px 0">'+esc(c.patientName)+'</h3><div class="profileLine"><span>MRN / National ID</span><span>'+esc(patientIdentifier(c))+'</span></div><div class="profileLine"><span>Bed / Room</span><b>'+esc(c.bed)+'</b></div><div class="profileLine"><span>Specialty</span><span>'+esc(c.specialty)+'</span></div><div class="profileLine"><span>Reason</span><span>'+esc(c.reason)+'</span></div><div style="margin-top:14px"><h3 style="margin-bottom:8px">Mandatory I-SBAR</h3>'+renderIsbar(c)+'</div><div style="margin:12px 0">'+statusBadge(c)+'</div><table><tr><th>Rota Level</th><th>Assigned</th></tr><tr><td>First On-Call</td><td>'+esc(c.first)+'</td></tr><tr><td>Second On-Call</td><td>'+esc(c.second)+'</td></tr><tr><td>Third On-Call</td><td>'+esc(c.third)+'</td></tr><tr><td>Head of Department</td><td>'+esc(c.hod)+'</td></tr></table><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="generateOTP()">Generate Arrival OTP</button><button class="btn success" onclick="whatsappAttention()">WhatsApp Attention Call</button><button class="btn warn" onclick="escalateSecond()">Escalate to Second</button><button class="btn secondary" onclick="redirectCase()">Close & Redirect</button><button class="btn danger" onclick="safety()">Safety Admission</button></div></div><div><div class="card"><h2>Current Physician Profile</h2>'+physicianContact(c)+'</div><div class="card" style="margin-top:14px"><h2>OTP & Physical Arrival</h2>'+(c.otp?'<div class="otp">'+c.otp+'</div><p class="sub">Patient '+esc(c.patientName)+' • '+esc(c.specialty)+' • Generated by '+esc(c.otpBy)+'</p>':'<div class="banner info">No active OTP for this consultation.</div>')+'<div class="banner '+(c.arrival?'ok':'info')+'">'+(c.arrival?'Physical arrival verified at '+esc(c.arrivalAt):'Attendance is complete only after the receiving physician enters the patient-specific ED OTP.')+'</div></div></div></div><div class="card" style="margin-top:14px"><h2>Patient Journey Audit Trail</h2><div class="timeline">'+c.events.map(x=>'<div class="event"><div>'+esc(x.t)+'</div><div class="dot"></div><div><b>'+esc(x.e)+'</b><small>'+esc(x.d)+'</small></div></div>').join('')+'</div></div>':'';
+ let detail=c?'<div class="grid g2" style="margin-top:14px"><div class="card"><h2>Selected Consultation</h2><div class="sub">'+esc(c.journey)+' • '+esc(c.patient)+'</div><h3 style="margin:6px 0">'+esc(c.patientName)+'</h3><div class="profileLine"><span>MRN / National ID</span><span>'+esc(patientIdentifier(c))+'</span></div><div class="profileLine"><span>Bed / Room</span><b>'+esc(c.bed)+'</b></div><div class="profileLine"><span>Specialty</span><span>'+esc(c.specialty)+'</span></div><div class="profileLine"><span>Priority</span><span>'+esc(c.priority||'Standard')+'</span></div><div class="profileLine"><span>Created by</span><span>'+esc(c.createdBy||'ED')+'</span></div><div class="profileLine"><span>Referral time</span><span>'+esc(c.createdAt||'—')+'</span></div><div class="profileLine"><span>Reason</span><span>'+esc(c.reason)+'</span></div><div style="margin-top:14px"><h3 style="margin-bottom:8px">Mandatory I-SBAR</h3>'+renderIsbar(c)+'</div><div style="margin:12px 0">'+statusBadge(c)+'</div>'+timerHtml(c)+delayDecisionHtml(c)+'<table><tr><th>Rota Level</th><th>Assigned</th></tr><tr><td>First On-Call</td><td>'+esc(c.first)+'</td></tr><tr><td>Second On-Call</td><td>'+esc(c.second)+'</td></tr><tr><td>Third On-Call</td><td>'+esc(c.third)+'</td></tr><tr><td>Head of Department</td><td>'+esc(c.hod)+'</td></tr></table><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="generateOTP()">Generate Arrival OTP</button><button class="btn success" onclick="whatsappAttention()">WhatsApp Attention Call</button><button class="btn warn" onclick="escalateSecond()">Escalate to Second</button><button class="btn secondary" onclick="redirectCase()">Close & Redirect</button><button class="btn danger" onclick="safety()">Safety Admission</button></div></div><div><div class="card"><h2>Current Physician Profile</h2>'+physicianContact(c)+'</div><div class="card" style="margin-top:14px"><h2>OTP & Physical Arrival</h2>'+(c.otp?'<div class="otp">'+c.otp+'</div><p class="sub">Patient '+esc(c.patientName)+' • '+esc(c.specialty)+' • Generated by '+esc(c.otpBy)+'</p>':'<div class="banner info">No active OTP for this consultation.</div>')+'<div class="banner '+(c.arrival?'ok':'info')+'">'+(c.arrival?'Physical arrival verified at '+esc(c.arrivalAt):'Attendance is complete only after the receiving physician enters the patient-specific ED OTP.')+'</div></div></div></div><div class="card" style="margin-top:14px"><h2>Patient Journey Audit Trail</h2><div class="timeline">'+c.events.map(x=>'<div class="event"><div>'+esc(x.t)+'</div><div class="dot"></div><div><b>'+esc(x.e)+'</b><small>'+esc(x.d)+'</small></div></div>').join('')+'</div></div>':'';
  document.getElementById('app').innerHTML='<div class="actions" style="justify-content:space-between;align-items:center;margin-bottom:14px"><div><h1>ED Live Workspace</h1><div class="sub">All ED consultations visible live to authorized ED users.</div></div><button class="btn primary" onclick="openNew()">＋ New Consultation</button></div>'+
  '<div class="grid g4"><div class="card metric"><span>Active consultations</span><b>'+active+'</b><span>Open ED consults</span></div><div class="card metric"><span>Total created</span><b>'+state.cases.length+'</b><span>This demo browser</span></div><div class="card metric"><span>Awaiting arrival</span><b>'+state.cases.filter(x=>x.accepted&&!x.arrival).length+'</b><span>Accepted, not yet OTP verified</span></div><div class="card metric"><span>Safety Admissions</span><b>'+state.cases.filter(x=>x.safety).length+'</b><span>Open / historical</span></div></div>'+
  '<div class="card" style="margin-top:14px"><div class="actions" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">Active Consultations Board</h2><div class="sub">Patient name, bed, specialty, status and escalation level.</div></div><button class="btn secondary" onclick="resetDemo()">Reset Demo</button></div>'+
@@ -201,7 +302,7 @@ function physicianCases(){
 function renderPhysician(){
  const list=physicianCases(),c=list[0]||null,roleLabel=uid==='ORTH1'?'FIRST ON-CALL':'SECOND ON-CALL';
  document.getElementById('app').innerHTML='<div class="mobile"><div class="phone"><div class="phoneTop"><span>Secure mobile view</span><span>'+roleLabel+'</span></div>'+
- (c?'<div class="card" style="box-shadow:none"><div class="sub">Incoming ED consultation</div><h1 style="margin-top:4px">'+esc(c.specialty)+'</h1><p><b>'+esc(c.patientName)+'</b><br>'+esc(c.patient)+' • Bed '+esc(c.bed)+'</p><div class="profileLine"><span>MRN / National ID</span><span>'+esc(patientIdentifier(c))+'</span></div><div style="margin:10px 0">'+badge(roleLabel,uid==='ORTH1'?'bblue':'bpurple')+'</div><div class="banner info"><b>Reason</b><br>'+esc(c.reason)+'</div><h3 style="margin:12px 0 8px">I-SBAR</h3>'+renderIsbar(c)+
+ (c?'<div class="card" style="box-shadow:none"><div class="sub">Incoming ED consultation</div><h1 style="margin-top:4px">'+esc(c.specialty)+'</h1><p><b>'+esc(c.patientName)+'</b><br>'+esc(c.patient)+' • Bed '+esc(c.bed)+'</p><div class="profileLine"><span>MRN / National ID</span><span>'+esc(patientIdentifier(c))+'</span></div><div class="profileLine"><span>Priority</span><span>'+esc(c.priority||'Standard')+'</span></div><div class="profileLine"><span>Referring ED clinician</span><span>'+esc(c.createdBy||'ED')+'</span></div><div class="profileLine"><span>Referral time</span><span>'+esc(c.createdAt||'—')+'</span></div><div class="profileLine"><span>Current rota level</span><b>'+esc(c.currentLevel)+'</b></div><div style="margin:10px 0">'+badge(roleLabel,uid==='ORTH1'?'bblue':'bpurple')+'</div><div class="banner info"><b>Reason</b><br>'+esc(c.reason)+'</div><h3 style="margin:12px 0 8px">I-SBAR</h3>'+renderIsbar(c)+timerHtml(c,true)+
  (!c.accepted?'<button class="btn primary" style="width:100%" onclick="accept(\''+c.id+'\')">Accept Consultation</button>':'<div class="banner ok"><b>Consultation accepted.</b><br>30-minute attendance clock started at '+esc(c.acceptedAt)+'.</div>')+
  (c.accepted&&!c.arrival?'<div class="field" style="margin-top:12px"><label>ED physical-arrival OTP</label><input id="otpInput" inputmode="numeric" maxlength="6" placeholder="6-digit code"><button class="btn success" onclick="verify(\''+c.id+'\')" style="margin-top:8px">Verify Physical Arrival</button></div>':'')+
  (c.arrival?'<div class="banner ok"><b>Physical attendance verified</b><br>'+esc(c.arrivalAt)+'</div>':'')+
@@ -209,15 +310,22 @@ function renderPhysician(){
  '</div><div class="roleLinks"><a href="?user=ED001">ED Desktop</a><a href="?user=ORTH1">First On-Call</a><a href="?user=ORTH2">Second On-Call</a></div></div>';
 }
 function accept(id){
- const c=state.cases.find(x=>x.id===id),u=me();if(!c)return;c.accepted=true;c.acceptedBy=u.name;c.acceptedAt=now();c.status='Accepted by '+u.role;c.events.push({t:now(),e:'Consultation accepted',d:u.name+' ('+u.id+') • 30-minute attendance clock started'});addAudit('Accept Consultation',c.patientName+' • '+c.specialty,c.id);save();render()
+ const c=state.cases.find(x=>x.id===id),u=me();if(!c)return;
+ c.accepted=true;c.acceptedBy=u.name;c.acceptedAt=now();c.acceptedIso=stamp();c.acceptedLevel=c.currentLevel;c.status='Accepted by '+u.role+' — attendance clock running';c.delayPhase=null;
+ if(!c.acceptHistory)c.acceptHistory=[];c.acceptHistory.push({physicianId:u.id,physicianName:u.name,level:c.currentLevel,acceptedIso:c.acceptedIso,closedIso:null,outcome:null,excessMs:0});
+ c.events.push({t:now(),e:'Consultation accepted',d:u.name+' ('+u.id+') • '+c.currentLevel+' • 30-minute physical attendance clock started'});
+ addAudit('Accept Consultation',c.patientName+' • '+c.specialty+' • '+c.currentLevel,c.id);save();render()
 }
 function verify(id){
  const c=state.cases.find(x=>x.id===id),v=(document.getElementById('otpInput').value||'').trim(),u=me();if(!c.otp){alert('No active ED OTP has been generated for this consultation.');return}if(v!==c.otp){alert('Invalid OTP for this patient / consultation / specialty.');return}
- c.arrival=true;c.arrivalAt=now();c.status='Physical arrival verified';c.events.push({t:now(),e:'Physical attendance verified',d:u.name+' ('+u.id+') entered the correct patient-specific OTP'});c.otp=null;addAudit('Verify Physical Arrival',c.patientName+' • '+c.specialty,c.id);save();render()
+ c.arrival=true;c.arrivalAt=now();c.arrivalIso=stamp();c.status='Physical arrival verified';c.delayPhase='closed';
+ if(!c.acceptHistory)c.acceptHistory=[];const active=c.acceptHistory[c.acceptHistory.length-1];if(active&&!active.closedIso){active.closedIso=c.arrivalIso;active.outcome='Physical arrival verified';active.durationMs=new Date(c.arrivalIso).getTime()-new Date(active.acceptedIso).getTime();active.excessMs=Math.max(0,active.durationMs-ATTENDANCE_LIMIT_MS)}
+ c.events.push({t:now(),e:'Physical attendance verified',d:u.name+' ('+u.id+') entered the correct patient-specific OTP. Attendance timer stopped.'});c.otp=null;addAudit('Verify Physical Arrival',c.patientName+' • '+c.specialty,c.id);save();render()
 }
 function resetDemo(){if(confirm('Reset all demo consultations in this browser?')){state={cases:[],selected:null,audit:[]};save();render()}}
 function render(){renderUserBox();uid==='ED001'?renderED():renderPhysician()}
 render();
+setInterval(workflowTick,1000);
 </script>
 </body>
 </html>
