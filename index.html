@@ -35,7 +35,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
 </head>
 <body>
 <header>
-  <div class="brand">ConsultFlow ED<small>V1.5 Clinical Workflow Prototype</small></div>
+  <div class="brand">ConsultFlow ED<small>V1.6 Clinical Workflow Prototype</small></div>
   <div class="user" id="userBox"></div>
 </header>
 <div class="wrap" id="app"></div>
@@ -68,6 +68,53 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
     </div>
     <div class="banner info" style="margin-top:12px">MRN / National ID / Iqama is mandatory in one identifier field. All five I-SBAR sections are separate mandatory boxes.</div>
     <div class="actions" style="justify-content:flex-end"><button class="btn secondary" onclick="closeNew()">Cancel</button><button class="btn primary" onclick="createConsultation()">Create & Send Consultation</button></div>
+  </div>
+</div>
+
+<div class="modal" id="redirectModal">
+  <div class="modalbox">
+    <div class="modalhead">
+      <div><h2>Close & Redirect Consultation</h2><div class="sub">ED-only workflow before physical specialty attendance.</div></div>
+      <button class="x" onclick="closeRedirectModal()">✕</button>
+    </div>
+    <div class="banner info" id="redirectPatientSummary"></div>
+    <input type="hidden" id="rSourceCaseId">
+    <div class="formgrid">
+      <div class="field">
+        <label>Current Consultation Specialty</label>
+        <input id="rCurrentSpec" disabled>
+      </div>
+      <div class="field">
+        <label>Redirect To Specialty *</label>
+        <select id="rTargetSpec">
+          <option value="">Select destination specialty</option>
+          <option>Orthopedics</option>
+          <option>Internal Medicine</option>
+          <option>General Surgery</option>
+          <option>Cardiology</option>
+          <option>Neurosurgery</option>
+        </select>
+      </div>
+      <div class="field span2">
+        <label>Mandatory Reason for Redirect *</label>
+        <textarea id="rReason" placeholder="Document why ED agreed to redirect after discussion with the original specialty."></textarea>
+      </div>
+      <div class="field span2">
+        <label>Escalation & CC / Notification Plan</label>
+        <div class="readonlyBox">
+          <b>New consultation:</b> starts at First On-Call of the destination specialty and follows the same escalation pathway:
+          First → Second → Third → Head of Department → Medical Administration On-Call.<br><br>
+          <b>Timers:</b> referral-to-accept timing starts immediately for the new consultation. After Accept Consultation, the 30-minute physical-attendance clock starts; the agreed 3-minute final re-contact workflow applies if ED decides the delay affected patient care.<br><br>
+          <b>Copies / alerts:</b> original specialty HOD, destination specialty HOD, Medical Administration On-Call, Medical Administration, and CQI & Patient Safety. Destination First On-Call receives the new consultation.
+        </div>
+      </div>
+    </div>
+    <div class="banner alert" style="margin-top:12px"><b>Important:</b> If ED does <u>not</u> agree that another specialty should take the case, do not redirect. Use the Safety Admission pathway instead.</div>
+    <div class="actions" style="justify-content:flex-end;margin-top:14px">
+      <button class="btn secondary" onclick="closeRedirectModal()">Cancel</button>
+      <button class="btn danger" onclick="redirectToSafetyAdmission()">Use Safety Admission Instead</button>
+      <button class="btn primary" onclick="submitRedirect()">Confirm Close & Redirect</button>
+    </div>
   </div>
 </div>
 
@@ -169,6 +216,7 @@ function fmtDuration(ms){
 }
 function currentAssignee(c){const id=assigneeIdForLevel(c,c.currentLevel);return {id,name:assigneeNameForLevel(c,c.currentLevel)}}
 function timerState(c){
+ if(c.closedIso&&String(c.status||'').includes('Redirected'))return {kind:'stopped',label:'Closed / Redirected',value:fmtDuration(c.redirectDurationMs||0)+' before redirect'};
  if(c.arrival)return {kind:'stopped',label:'Attendance verified',value:c.arrivalAt||'Verified'};
  if(!c.accepted||!c.acceptedIso)return {kind:'response',label:'Awaiting consultation acceptance',value:fmtDuration(msSince(c.createdIso))+' open'};
  const elapsed=msSince(c.acceptedIso),remaining=ATTENDANCE_LIMIT_MS-elapsed;
@@ -343,14 +391,59 @@ function activateSafetyAdmission(cc,reason,u){
 function confirmSafetyAdmission(id){
  const cc=state.cases.find(x=>x.id===id);if(!cc||!isEDSupervisor()||!(cc.safety&&cc.safety.requested))return;activateSafetyAdmission(cc,cc.safety.reason,me());save();render()
 }
-function closeRedirect(id){
- const cc=state.cases.find(x=>x.id===id);if(!cc||!isEDClinical()||cc.arrival){alert('ED redirect is allowed only before physical attendance.');return}
- const target=prompt('Redirect to which specialty?\nOrthopedics / Internal Medicine / General Surgery / Cardiology / Neurosurgery');if(!target||!ROTA[target])return;
- const reason=prompt('Mandatory reason for ED redirect after specialty discussion:');if(!reason)return;const u=me(),r=getRota(target),nid='C-'+Date.now();
- cc.status='Closed & Redirected by ED';cc.redirect={target,reason,byId:u.id,by:u.name,iso:stamp()};cc.events.push({t:now(),e:'Closed & Redirected by ED',d:cc.specialty+' → '+target+' • '+reason});
- const nc={...cc,id:nid,parentId:cc.id,specialty:target,reason:'ED redirect: '+reason,currentLevel:'First On-Call',first:r.first,firstId:r.firstId,second:r.second,secondId:r.secondId,third:r.third,thirdId:r.thirdId,hod:r.hod,hodId:r.hodId,createdAt:now(),createdIso:stamp(),createdBy:u.name,status:'Pending First On-Call',accepted:false,acceptedBy:null,acceptedById:null,acceptedAt:null,acceptedIso:null,acceptedLevel:null,acceptHistory:[],delayPhase:null,recontactStartedIso:null,recontactDeadlineIso:null,arrival:false,arrivalAt:null,arrivalIso:null,arrivalOtp:null,arrivalOtpRequest:null,safety:null,safetyOtp:null,safetyOtpRequest:null,redirect:null,events:[{t:now(),e:'Redirected consultation opened',d:u.name+' • '+cc.specialty+' → '+target+' • same Patient Journey'}]};
- state.cases.unshift(nc);state.selected=nid;addAudit('Close & Redirect Consultation',cc.specialty+' → '+target+' • '+reason,cc.id);notifyRole('medadmin_oncall','ED redirect: '+cc.patientName+' • '+cc.specialty+' → '+target,cc.id);notifyRole('medadmin','ED redirect: '+cc.patientName+' • '+cc.specialty+' → '+target,cc.id);notifyRole('cqi','Review ED redirect: '+cc.patientName+' • '+cc.specialty+' → '+target,cc.id);notifySpecialtyHod(cc.specialty,'ED redirect involving your specialty: '+cc.patientName,cc.id);notifyUser(nc.firstId,'New ED consultation after redirect: '+cc.patientName+' • '+target,nc.id);save();render()
+function openRedirect(id){
+ const cc=state.cases.find(x=>x.id===id);if(!cc||!isEDClinical()){return}
+ if(cc.arrival){alert('Close & Redirect is available only before physical attendance. After physical assessment, the receiving physician should use Onward Referral.');return}
+ document.getElementById('rSourceCaseId').value=cc.id;
+ document.getElementById('rCurrentSpec').value=cc.specialty;
+ document.getElementById('rTargetSpec').value='';
+ document.getElementById('rReason').value='';
+ document.getElementById('redirectPatientSummary').innerHTML='<b>'+esc(cc.patientName)+'</b> • '+esc(patientIdentifier(cc))+' • Bed '+esc(cc.bed)+'<br>Journey: '+esc(cc.journey)+' • Current consultation: '+esc(cc.specialty)+' • Referred by: '+esc(referralSource(cc).clinician);
+ document.getElementById('redirectModal').classList.add('open')
 }
+function closeRedirectModal(){document.getElementById('redirectModal').classList.remove('open')}
+function redirectToSafetyAdmission(){
+ const id=document.getElementById('rSourceCaseId').value;closeRedirectModal();if(id)requestSafetyAdmission(id)
+}
+function submitRedirect(){
+ const sourceId=document.getElementById('rSourceCaseId').value,cc=state.cases.find(x=>x.id===sourceId);if(!cc||!isEDClinical())return;
+ if(cc.arrival){alert('The physician has already physically attended. Use Onward Referral after assessment.');return}
+ const target=document.getElementById('rTargetSpec').value,reason=document.getElementById('rReason').value.trim();
+ if(!target||!ROTA[target]){alert('Select the destination specialty from the list.');return}
+ if(target===cc.specialty){alert('Select a different specialty.');return}
+ if(!reason){alert('Reason for redirect is mandatory.');return}
+ const u=me(),r=getRota(target),nid='C-'+Date.now(),closedIso=stamp(),closedAt=now();
+ const elapsedMs=cc.createdIso?new Date(closedIso).getTime()-new Date(cc.createdIso).getTime():null;
+ cc.status='Closed & Redirected by ED';
+ cc.closedIso=closedIso;cc.closedAt=closedAt;cc.closedReason='ED Redirect';cc.redirectDurationMs=elapsedMs;
+ cc.redirect={target,reason,byId:u.id,by:u.name,iso:closedIso,fromSpecialty:cc.specialty,
+   ccRecipients:['Original Specialty HOD','Destination Specialty HOD','Medical Administration On-Call','Medical Administration','CQI & Patient Safety']};
+ cc.events.push({t:closedAt,e:'Closed & Redirected by ED',d:u.name+' • '+cc.specialty+' → '+target+' • Reason: '+reason+' • Original consultation retained in Patient Journey'});
+ const nc={...cc,id:nid,parentId:cc.id,specialty:target,origin:'ED Redirect',originSpecialty:cc.specialty,createdFrom:'ED Redirect from '+cc.specialty,
+   reason:'ED redirect after specialty discussion: '+reason,currentLevel:'First On-Call',
+   first:r.first,firstId:r.firstId,second:r.second,secondId:r.secondId,third:r.third,thirdId:r.thirdId,hod:r.hod,hodId:r.hodId,
+   createdAt:now(),createdIso:stamp(),createdBy:u.name,createdById:u.id,
+   status:'Pending First On-Call',accepted:false,acceptedBy:null,acceptedById:null,acceptedAt:null,acceptedIso:null,acceptedLevel:null,
+   acceptHistory:[],delayPhase:null,recontactStartedIso:null,recontactDeadlineIso:null,careAffected:false,
+   arrival:false,arrivalAt:null,arrivalIso:null,arrivalOtp:null,arrivalOtpRequest:null,
+   safety:null,safetyOtp:null,safetyOtpRequest:null,redirect:null,closedIso:null,closedAt:null,closedReason:null,redirectDurationMs:null,
+   disposition:null,dispositionIso:null,dispositionBy:null,
+   events:[
+     {t:now(),e:'Redirected consultation opened',d:u.name+' • '+cc.specialty+' → '+target+' • same Patient Journey'},
+     {t:now(),e:'First On-Call notified',d:(r.first||'Rota assignment pending')+' • new referral-to-accept timer started'},
+     {t:now(),e:'CC / notifications sent',d:'Original HOD + Destination HOD + Medical Administration On-Call + Medical Administration + CQI & Patient Safety'}
+   ]};
+ state.cases.unshift(nc);state.selected=nid;
+ addAudit('Close & Redirect Consultation',cc.specialty+' → '+target+' • '+reason+' • new consultation '+nid,cc.id);
+ notifyRole('medadmin_oncall','ED redirect: '+cc.patientName+' • '+cc.specialty+' → '+target,cc.id);
+ notifyRole('medadmin','ED redirect: '+cc.patientName+' • '+cc.specialty+' → '+target,cc.id);
+ notifyRole('cqi','Review ED redirect: '+cc.patientName+' • '+cc.specialty+' → '+target,cc.id);
+ notifySpecialtyHod(cc.specialty,'ED redirect from your specialty: '+cc.patientName+' • Reason documented in Patient Journey',cc.id);
+ notifySpecialtyHod(target,'New ED redirect to your specialty: '+cc.patientName+' • '+target,nc.id);
+ notifyUser(nc.firstId,'New ED consultation after redirect: '+cc.patientName+' • '+target,nc.id);
+ save();closeRedirectModal();render()
+}
+function closeRedirect(id){openRedirect(id)}
 function setDisposition(id,decision){
  const cc=state.cases.find(x=>x.id===id),u=me();if(!cc||!cc.arrival)return;cc.disposition=decision;cc.dispositionIso=stamp();cc.dispositionBy=u.name;cc.events.push({t:now(),e:'Disposition decision: '+decision,d:u.name});addAudit('Disposition decision',decision,cc.id);save();render()
 }
@@ -404,7 +497,7 @@ function caseMetrics(cases){
 function kpiHtml(m){return '<div class="kpis"><div class="kpi"><span>Total consultations</span><b>'+m.total+'</b></div><div class="kpi"><span>Within 30-min attendance KPI</span><b>'+m.within+'</b></div><div class="kpi"><span>Delayed >30 min</span><b>'+m.delayed+'</b></div><div class="kpi"><span>Median accept</span><b>'+(m.medianAccept==null?'—':m.medianAccept+'m')+'</b></div><div class="kpi"><span>Median attendance</span><b>'+(m.medianAttendance==null?'—':m.medianAttendance+'m')+'</b></div></div>'
 }
 function roleNav(){
- return '<div class="roleNav"><a href="?user=ED001&v=15">ED Physician</a><a href="?user=EDN001&v=15">ED Nurse</a><a href="?user=EDTL001&v=15">ED Team Leader</a><a href="?user=EDHOD001&v=15">ED HOD</a><a href="?user=ORTH1&v=15">First On-Call</a><a href="?user=ORTH2&v=15">Second On-Call</a><a href="?user=ORTH3&v=15">Third On-Call</a><a href="?user=ORTHHOD&v=15">Specialty HOD</a><a href="?user=MEDON1&v=15">Med Admin On-Call</a><a href="?user=MEDADM1&v=15">Medical Administration</a><a href="?user=CQI001&v=15">CQI & PS</a><a href="?user=SYS001&v=15">System Admin</a></div>'
+ return '<div class="roleNav"><a href="?user=ED001&v=16">ED Physician</a><a href="?user=EDN001&v=16">ED Nurse</a><a href="?user=EDTL001&v=16">ED Team Leader</a><a href="?user=EDHOD001&v=16">ED HOD</a><a href="?user=ORTH1&v=16">First On-Call</a><a href="?user=ORTH2&v=16">Second On-Call</a><a href="?user=ORTH3&v=16">Third On-Call</a><a href="?user=ORTHHOD&v=16">Specialty HOD</a><a href="?user=MEDON1&v=16">Med Admin On-Call</a><a href="?user=MEDADM1&v=16">Medical Administration</a><a href="?user=CQI001&v=16">CQI & PS</a><a href="?user=SYS001&v=16">System Admin</a></div>'
 }
 function openNew(){document.getElementById('newModal').classList.add('open')}
 function closeNew(){document.getElementById('newModal').classList.remove('open')}
@@ -473,13 +566,14 @@ function workflowSummary(c){
  return statusBadge(c)+'<div class="sub" style="margin-top:5px">'+esc(c.currentLevel)+' • '+esc(current||'—')+'</div>'
 }
 function renderED(){
- const c=selected(),active=state.cases.filter(x=>!x.arrival&&!x.status.includes('Redirected')).length;
- let rows=state.cases.map(x=>{const ref=referralSource(x);return '<tr><td><button class="linkbtn" onclick="selectCase(\''+x.id+'\')">'+esc(x.patientName)+'</button><div class="sub">'+esc(x.patient)+' • '+esc(x.journey)+'</div></td><td><b>'+esc(x.bed)+'</b></td><td>'+esc(x.specialty)+'</td><td><b>'+esc(ref.clinician)+'</b><div class="sub">From: '+esc(ref.source)+' • '+esc(ref.time)+'</div></td><td>'+workflowSummary(x)+'</td></tr>'}).join('');
- let detail=c?'<div class="grid g2" style="margin-top:14px"><div class="card"><h2>Selected Consultation</h2><div class="sub">'+esc(c.journey)+' • '+esc(c.patient)+'</div><h3 style="margin:6px 0">'+esc(c.patientName)+'</h3><div class="profileLine"><span>MRN / National ID</span><span>'+esc(patientIdentifier(c))+'</span></div><div class="profileLine"><span>Bed / Room</span><b>'+esc(c.bed)+'</b></div><div class="profileLine"><span>Specialty</span><span>'+esc(c.specialty)+'</span></div><div class="profileLine"><span>Priority</span><span>'+esc(c.priority||'Standard')+'</span></div><div class="profileLine"><span>Referred by</span><b>'+esc(referralSource(c).clinician)+'</b></div><div class="profileLine"><span>From</span><span>'+esc(referralSource(c).source)+'</span></div><div class="profileLine"><span>Referral time</span><span>'+esc(c.createdAt||'—')+'</span></div><div class="profileLine"><span>Reason</span><span>'+esc(c.reason)+'</span></div><div style="margin-top:14px"><h3 style="margin-bottom:8px">Mandatory I-SBAR</h3>'+renderIsbar(c)+'</div><div style="margin:12px 0">'+statusBadge(c)+'</div>'+timerHtml(c)+delayDecisionHtml(c)+'<table><tr><th>Rota Level</th><th>Assigned</th></tr><tr><td>First On-Call</td><td>'+esc(c.first)+'</td></tr><tr><td>Second On-Call</td><td>'+esc(c.second)+'</td></tr><tr><td>Third On-Call</td><td>'+esc(c.third)+'</td></tr><tr><td>Head of Department</td><td>'+esc(c.hod)+'</td></tr></table><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="generateOTP()">'+(canGenerateOtp()?'Generate Arrival OTP':'Request Arrival OTP')+'</button><button class="btn success" onclick="whatsappAttention()">WhatsApp Attention Call</button><button class="btn warn" onclick="escalateSecond()">Escalate to Second</button><button class="btn secondary" onclick="redirectCase()">Close & Redirect</button><button class="btn danger" onclick="safety()">Safety Admission</button>'+(c.safety&&c.safety.requested&&!c.safety.active&&isEDSupervisor()?'<button class="btn danger" onclick="confirmSafetyAdmission(\''+c.id+'\')">Confirm Safety Admission</button>':'')+'</div></div><div><div class="card"><h2>Current Physician Profile</h2>'+physicianContact(c)+'</div><div class="card" style="margin-top:14px"><h2>OTP & Physical Arrival</h2>'+otpCard(c,'arrival')+(c.safety&&c.safety.active?'<h3 style="margin:14px 0 8px">Safety Admission OTP</h3>'+otpCard(c,'safety')+safetyTimerHtml(c):'')+'<div class="banner '+(c.arrival?'ok':'info')+'">'+(c.arrival?'Physical arrival verified at '+esc(c.arrivalAt):'Attendance is complete only after the receiving physician enters the patient-specific ED OTP.')+'</div></div></div></div><div class="card" style="margin-top:14px"><h2>Patient Journey Audit Trail</h2><div class="timeline">'+c.events.map(x=>'<div class="event"><div>'+esc(x.t)+'</div><div class="dot"></div><div><b>'+esc(x.e)+'</b><small>'+esc(x.d)+'</small></div></div>').join('')+'</div></div>':'';
+ const c=selected(),active=state.cases.filter(x=>!x.arrival&&!String(x.status||'').includes('Closed & Redirected')).length;
+ let rows=state.cases.filter(x=>!String(x.status||'').includes('Closed & Redirected')).map(x=>{const ref=referralSource(x);return '<tr><td><button class="linkbtn" onclick="selectCase(\''+x.id+'\')">'+esc(x.patientName)+'</button><div class="sub">'+esc(x.patient)+' • '+esc(x.journey)+'</div></td><td><b>'+esc(x.bed)+'</b></td><td>'+esc(x.specialty)+'</td><td><b>'+esc(ref.clinician)+'</b><div class="sub">From: '+esc(ref.source)+' • '+esc(ref.time)+'</div></td><td>'+workflowSummary(x)+'</td></tr>'}).join('');
+ let detail=c?'<div class="grid g2" style="margin-top:14px"><div class="card"><h2>Selected Consultation</h2><div class="sub">'+esc(c.journey)+' • '+esc(c.patient)+'</div><h3 style="margin:6px 0">'+esc(c.patientName)+'</h3><div class="profileLine"><span>MRN / National ID</span><span>'+esc(patientIdentifier(c))+'</span></div><div class="profileLine"><span>Bed / Room</span><b>'+esc(c.bed)+'</b></div><div class="profileLine"><span>Specialty</span><span>'+esc(c.specialty)+'</span></div><div class="profileLine"><span>Priority</span><span>'+esc(c.priority||'Standard')+'</span></div><div class="profileLine"><span>Referred by</span><b>'+esc(referralSource(c).clinician)+'</b></div><div class="profileLine"><span>From</span><span>'+esc(referralSource(c).source)+'</span></div><div class="profileLine"><span>Referral time</span><span>'+esc(c.createdAt||'—')+'</span></div><div class="profileLine"><span>Reason</span><span>'+esc(c.reason)+'</span></div>'+(c.redirect?'<div class="notice dangerNotice"><b>ED Redirect</b><br>To: '+esc(c.redirect.target)+'<br>Mandatory reason: '+esc(c.redirect.reason)+'<br>Redirected by: '+esc(c.redirect.by)+'<br>CC: '+esc((c.redirect.ccRecipients||[]).join(' • '))+'</div>':'')+'<div style="margin-top:14px"><h3 style="margin-bottom:8px">Mandatory I-SBAR</h3>'+renderIsbar(c)+'</div><div style="margin:12px 0">'+statusBadge(c)+'</div>'+timerHtml(c)+delayDecisionHtml(c)+'<table><tr><th>Rota Level</th><th>Assigned</th></tr><tr><td>First On-Call</td><td>'+esc(c.first)+'</td></tr><tr><td>Second On-Call</td><td>'+esc(c.second)+'</td></tr><tr><td>Third On-Call</td><td>'+esc(c.third)+'</td></tr><tr><td>Head of Department</td><td>'+esc(c.hod)+'</td></tr></table><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="generateOTP()">'+(canGenerateOtp()?'Generate Arrival OTP':'Request Arrival OTP')+'</button><button class="btn success" onclick="whatsappAttention()">WhatsApp Attention Call</button><button class="btn warn" onclick="escalateSecond()">Escalate to Second</button><button class="btn secondary" onclick="redirectCase()">Close & Redirect</button><button class="btn danger" onclick="safety()">Safety Admission</button>'+(c.safety&&c.safety.requested&&!c.safety.active&&isEDSupervisor()?'<button class="btn danger" onclick="confirmSafetyAdmission(\''+c.id+'\')">Confirm Safety Admission</button>':'')+'</div></div><div><div class="card"><h2>Current Physician Profile</h2>'+physicianContact(c)+'</div><div class="card" style="margin-top:14px"><h2>OTP & Physical Arrival</h2>'+otpCard(c,'arrival')+(c.safety&&c.safety.active?'<h3 style="margin:14px 0 8px">Safety Admission OTP</h3>'+otpCard(c,'safety')+safetyTimerHtml(c):'')+'<div class="banner '+(c.arrival?'ok':'info')+'">'+(c.arrival?'Physical arrival verified at '+esc(c.arrivalAt):'Attendance is complete only after the receiving physician enters the patient-specific ED OTP.')+'</div></div></div></div><div class="card" style="margin-top:14px"><h2>Patient Journey Audit Trail</h2><div class="timeline">'+c.events.map(x=>'<div class="event"><div>'+esc(x.t)+'</div><div class="dot"></div><div><b>'+esc(x.e)+'</b><small>'+esc(x.d)+'</small></div></div>').join('')+'</div></div>':'';
  document.getElementById('app').innerHTML='<div class="actions" style="justify-content:space-between;align-items:center;margin-bottom:14px"><div><h1>ED Live Workspace</h1><div class="sub">All ED consultations visible live to authorized ED users.</div></div><button class="btn primary" onclick="openNew()">＋ New Consultation</button></div>'+
  '<div class="grid g4"><div class="card metric"><span>Active consultations</span><b>'+active+'</b><span>Open ED consults</span></div><div class="card metric"><span>Total created</span><b>'+state.cases.length+'</b><span>This demo browser</span></div><div class="card metric"><span>Awaiting arrival</span><b>'+state.cases.filter(x=>x.accepted&&!x.arrival).length+'</b><span>Accepted, not yet OTP verified</span></div><div class="card metric"><span>Safety Admissions</span><b>'+state.cases.filter(x=>x.safety).length+'</b><span>Open / historical</span></div></div>'+
  '<div class="card" style="margin-top:14px"><div class="actions" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">Active Consultations Board</h2><div class="sub">Compact live view: patient, destination specialty, who referred the case, and current workflow.</div></div><button class="btn secondary" onclick="resetDemo()">Reset Demo</button></div>'+
- (state.cases.length?'<div style="overflow:auto"><table><tr><th>Patient</th><th>Bed</th><th>To Specialty</th><th>Referred By</th><th>Workflow</th></tr>'+rows+'</table></div>':'<div class="empty"><b>No consultations yet</b>Click “New Consultation” to create the first ED referral.</div>')+'</div>'+detail+
+ (state.cases.filter(x=>!String(x.status||'').includes('Closed & Redirected')).length?'<div style="overflow:auto"><table><tr><th>Patient</th><th>Bed</th><th>To Specialty</th><th>Referred By</th><th>Workflow</th></tr>'+rows+'</table></div>':'<div class="empty"><b>No active consultations</b>Create a consultation or review the closed/redirected history below.</div>')+'</div>'+
+ (state.cases.some(x=>String(x.status||'').includes('Closed & Redirected'))?'<div class="card" style="margin-top:14px"><h2>Closed / Redirected History</h2><div class="tableWrap"><table><tr><th>Patient</th><th>From</th><th>To</th><th>Redirected By</th><th>Reason</th><th>Time Before Redirect</th></tr>'+state.cases.filter(x=>String(x.status||'').includes('Closed & Redirected')).map(x=>'<tr><td><button class="linkbtn" onclick="selectCase(\''+x.id+'\')">'+esc(x.patientName)+'</button></td><td>'+esc(x.specialty)+'</td><td>'+esc(x.redirect?.target||'—')+'</td><td>'+esc(x.redirect?.by||'—')+'</td><td>'+esc(x.redirect?.reason||'—')+'</td><td>'+fmtDuration(x.redirectDurationMs||0)+'</td></tr>').join('')+'</table></div></div>':'')+detail+
  '<div class="card" style="margin-top:14px"><h2>Workflow Alerts</h2>'+notificationHtml()+'</div>'+roleNav();
 }
 function journeyPath(c){
