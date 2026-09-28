@@ -8,7 +8,7 @@
 :root{--navy:#08365f;--blue:#0b66e4;--bg:#f3f7fb;--card:#fff;--line:#dbe6f2;--text:#10243e;--muted:#64748b;--green:#15803d;--amber:#b45309;--red:#b91c1c;--purple:#6d28d9}
 *{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
 header{background:linear-gradient(100deg,#06396b,#07549c);color:white;padding:14px 18px;display:flex;justify-content:space-between;gap:16px;align-items:center;position:sticky;top:0;z-index:20}
-.brand{font-weight:800}.brand small{display:block;font-weight:500;opacity:.75}.user{text-align:right;font-size:12px}
+.brand{font-weight:800}.brand small{display:block;font-weight:500;opacity:.75}.user{text-align:right;font-size:12px}.user button{margin-top:6px}
 .wrap{max-width:1220px;margin:auto;padding:18px}.grid{display:grid;gap:14px}.g4{grid-template-columns:repeat(4,1fr)}.g2{grid-template-columns:1.1fr .9fr}
 .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 8px 24px rgba(16,36,62,.05)}
 h1,h2,h3{margin:0}h2{font-size:18px;margin-bottom:12px}.sub{color:var(--muted);font-size:12px}.metric b{font-size:28px;display:block}.metric span{color:var(--muted);font-size:12px}
@@ -21,11 +21,11 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
 .otp{font-size:34px;font-weight:900;letter-spacing:8px;text-align:center;background:#eef5ff;border:1px dashed #7aaef5;border-radius:14px;padding:18px}
 .timeline{display:grid;gap:8px}.event{display:grid;grid-template-columns:64px 12px 1fr;gap:8px;font-size:12px}.dot{width:9px;height:9px;border-radius:50%;background:var(--blue);margin-top:4px}.event small{display:block;color:var(--muted);margin-top:3px}
 .empty{padding:28px;text-align:center;border:1px dashed #b8c9dc;border-radius:14px;background:#f8fbff}.empty b{display:block;margin-bottom:8px}
-.modal{position:fixed;inset:0;background:rgba(2,12,27,.55);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}.modal.open{display:flex}.modalbox{background:white;border-radius:18px;padding:18px;max-width:720px;width:100%;max-height:92vh;overflow:auto}
+.modal{position:fixed;inset:0;background:rgba(2,12,27,.55);display:none;align-items:center;justify-content:center;padding:18px;z-index:50}.modal.open{display:flex}.modalbox{background:white;border-radius:18px;padding:18px;max-width:760px;width:100%;max-height:92vh;overflow:auto}
 .modalhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.x{border:0;background:#eef2f7;border-radius:9px;padding:8px 10px;cursor:pointer}
 .mobile{max-width:430px;margin:auto}.phone{border:1px solid #cbd5e1;border-radius:28px;padding:14px;background:white;box-shadow:0 20px 50px rgba(0,0,0,.12)}.phoneTop{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-bottom:12px}
-.roleLinks{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.roleLinks a{color:var(--blue);font-size:12px;text-decoration:none}
-@media(max-width:850px){.g4,.g2,.formgrid{grid-template-columns:1fr}.span2{grid-column:auto}.wrap{padding:12px}.desktopOnly{display:none}header{align-items:flex-start}.user{font-size:11px}}
+.roleLinks{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.roleLinks a{color:var(--blue);font-size:12px;text-decoration:none}.profileLine{display:grid;grid-template-columns:140px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}.profileLine span:first-child{color:var(--muted)}
+@media(max-width:850px){.g4,.g2,.formgrid{grid-template-columns:1fr}.span2{grid-column:auto}.wrap{padding:12px}.desktopOnly{display:none}header{align-items:flex-start}.user{font-size:11px}.profileLine{grid-template-columns:110px 1fr}}
 </style>
 </head>
 <body>
@@ -34,64 +34,112 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
   <div class="user" id="userBox"></div>
 </header>
 <div class="wrap" id="app"></div>
+
 <div class="modal" id="newModal">
   <div class="modalbox">
     <div class="modalhead"><div><h2>New ED Consultation</h2><div class="sub">Create a new patient consultation and route it to the current on-call team.</div></div><button class="x" onclick="closeNew()">✕</button></div>
+    <div class="banner alert"><b>Public demo only:</b> Do not enter real patient identifiers or real phone numbers in this GitHub Pages prototype.</div>
     <div class="formgrid">
-      <div class="field"><label>Patient / ED Reference *</label><input id="fPatient" placeholder="e.g. ED-4821"></div>
-      <div class="field"><label>MRN / Encounter ID</label><input id="fMrn" placeholder="Demo only — do not use real PHI"></div>
+      <div class="field span2"><label>Patient Full Name — Triple Name *</label><input id="fName" placeholder="e.g. Mohammed Ali Hassan"></div>
+      <div class="field"><label>Medical Record Number (MRN)</label><input id="fMrn" placeholder="MRN"></div>
+      <div class="field"><label>National ID / Iqama Number</label><input id="fNationalId" placeholder="National ID / Iqama"></div>
+      <div class="field"><label>Bed / Room Number *</label><input id="fBed" placeholder="e.g. ED-B12"></div>
       <div class="field"><label>Specialty *</label><select id="fSpec">
         <option value="">Select specialty</option><option>Orthopedics</option><option>Internal Medicine</option><option>General Surgery</option><option>Cardiology</option><option>Neurosurgery</option>
       </select></div>
       <div class="field"><label>Clinical Priority</label><select id="fPriority"><option>Standard</option><option>Urgent</option></select></div>
+      <div class="field"><label>ED Reference</label><input id="fPatient" placeholder="Auto-generated if blank"></div>
       <div class="field span2"><label>Reason for Consultation *</label><input id="fReason" placeholder="Short clinical reason"></div>
       <div class="field span2"><label>I-SBAR / Clinical Summary</label><textarea id="fSummary" placeholder="Identification, Situation, Background, Assessment, Recommendation"></textarea></div>
     </div>
-    <div class="banner info" style="margin-top:12px">The system assigns the current First On-Call from the rota. There is no Reject button on the receiving physician side.</div>
+    <div class="banner info" style="margin-top:12px">At least one identifier is required: MRN or National ID/Iqama. The system assigns the current First On-Call from the rota.</div>
     <div class="actions" style="justify-content:flex-end"><button class="btn secondary" onclick="closeNew()">Cancel</button><button class="btn primary" onclick="createConsultation()">Create & Send Consultation</button></div>
   </div>
 </div>
+
+<div class="modal" id="profileModal">
+  <div class="modalbox">
+    <div class="modalhead"><div><h2>Physician Profile</h2><div class="sub">Individual account and communication details.</div></div><button class="x" onclick="closeProfile()">✕</button></div>
+    <div class="banner alert"><b>Public demo only:</b> Use test numbers here. Real WhatsApp/phone details must be stored only in the secured hospital deployment.</div>
+    <div class="formgrid">
+      <div class="field"><label>Full Name</label><input id="pName"></div>
+      <div class="field"><label>Employee ID</label><input id="pEmployeeId"></div>
+      <div class="field"><label>Specialty / Department</label><input id="pDept"></div>
+      <div class="field"><label>Professional Rank</label><select id="pRank"><option>Resident</option><option>Registrar</option><option>Senior Registrar</option><option>Consultant</option></select></div>
+      <div class="field"><label>Mobile Number</label><input id="pMobile" placeholder="+9665XXXXXXXX"></div>
+      <div class="field"><label>WhatsApp Registered Number</label><input id="pWhatsapp" placeholder="+9665XXXXXXXX"></div>
+      <div class="field span2"><label>Institutional Email</label><input id="pEmail" placeholder="name@hospital.sa"></div>
+      <div class="field"><label>Consultation Eligibility</label><select id="pEligible"><option value="true">Active / Eligible</option><option value="false">Inactive / Not Eligible</option></select></div>
+      <div class="field"><label>WhatsApp Attention Call</label><select id="pWhatsAppEnabled"><option value="true">Enabled</option><option value="false">Disabled</option></select></div>
+    </div>
+    <div class="banner info" style="margin-top:12px">In production, the WhatsApp number will be used by the approved business calling/notification integration. No patient information should be sent through WhatsApp.</div>
+    <div class="actions" style="justify-content:flex-end"><button class="btn secondary" onclick="closeProfile()">Cancel</button><button class="btn primary" onclick="saveProfile()">Save Profile</button></div>
+  </div>
+</div>
+
 <script>
-const USERS={
- ED001:{id:'ED001',name:'Dr. Ahmed Alharbi',role:'ED Physician',dept:'Emergency Department'},
- ORTH1:{id:'ORTH1',name:'Dr. Nasser B.',role:'First On-Call',dept:'Orthopedics'},
- ORTH2:{id:'ORTH2',name:'Dr. Abdullah T.',role:'Second On-Call',dept:'Orthopedics'}
+const DEFAULT_USERS={
+ ED001:{id:'ED001',name:'Dr. Ahmed Alharbi',employeeId:'ED-1001',role:'ED Physician',dept:'Emergency Department',rank:'Consultant',mobile:'+966500000001',whatsapp:'+966500000001',email:'ahmed@demo.local',eligible:true,whatsappEnabled:true},
+ ORTH1:{id:'ORTH1',name:'Dr. Nasser B.',employeeId:'ORTH-2001',role:'First On-Call',dept:'Orthopedics',rank:'Senior Registrar',mobile:'+966500000011',whatsapp:'+966500000011',email:'nasser@demo.local',eligible:true,whatsappEnabled:true},
+ ORTH2:{id:'ORTH2',name:'Dr. Abdullah T.',employeeId:'ORTH-2002',role:'Second On-Call',dept:'Orthopedics',rank:'Consultant',mobile:'+966500000012',whatsapp:'+966500000012',email:'abdullah@demo.local',eligible:true,whatsappEnabled:true}
 };
 const ROTA={
- 'Orthopedics':{first:'Dr. Nasser B.',second:'Dr. Abdullah T.',third:'Dr. Faisal M.',hod:'Dr. Waleed S.'},
+ 'Orthopedics':{firstId:'ORTH1',secondId:'ORTH2',third:'Dr. Faisal M.',hod:'Dr. Waleed S.'},
  'Internal Medicine':{first:'Dr. Omar A.',second:'Dr. Majed K.',third:'Dr. Sami R.',hod:'Dr. Khalid H.'},
  'General Surgery':{first:'Dr. Yasser M.',second:'Dr. Ali S.',third:'Dr. Fahad N.',hod:'Dr. Mansour A.'},
  'Cardiology':{first:'Dr. Saad R.',second:'Dr. Turki A.',third:'Dr. Hassan M.',hod:'Dr. Nasser K.'},
  'Neurosurgery':{first:'Dr. Bandar F.',second:'Dr. Mohammed A.',third:'Dr. Abdullah S.',hod:'Dr. Khalid N.'}
 };
-const q=new URLSearchParams(location.search), uid=q.get('user')||'ED001', me=USERS[uid]||USERS.ED001;
-document.getElementById('userBox').innerHTML='<b>'+me.name+'</b><br>'+me.role+' • '+me.dept;
-const STORE='consultflow_demo_shared_v2';
+const q=new URLSearchParams(location.search), uid=q.get('user')||'ED001';
+const PROFILE_STORE='consultflow_profiles_v1';
+let profiles;
+try{profiles=JSON.parse(localStorage.getItem(PROFILE_STORE))||structuredClone(DEFAULT_USERS)}catch(e){profiles=structuredClone(DEFAULT_USERS)}
+for(const k in DEFAULT_USERS){profiles[k]=Object.assign({},DEFAULT_USERS[k],profiles[k]||{})}
+function saveProfiles(){localStorage.setItem(PROFILE_STORE,JSON.stringify(profiles))}
+function me(){return profiles[uid]||profiles.ED001}
+function renderUserBox(){
+ const u=me();document.getElementById('userBox').innerHTML='<b>'+esc(u.name)+'</b><br>'+esc(u.role)+' • '+esc(u.dept)+'<br><button class="btn secondary" onclick="openProfile()">My Profile</button>'
+}
+const STORE='consultflow_demo_shared_v3';
 let state={cases:[],selected:null,audit:[]};
 try{state=JSON.parse(localStorage.getItem(STORE))||state}catch(e){}
 function save(){localStorage.setItem(STORE,JSON.stringify(state))}
 function now(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
 function stamp(){return new Date().toISOString()}
-function addAudit(action,detail,caseId){state.audit.push({t:now(),iso:stamp(),user:me.name,role:me.role,action,detail,caseId});save()}
+function addAudit(action,detail,caseId){const u=me();state.audit.push({t:now(),iso:stamp(),userId:u.id,user:u.name,role:u.role,action,detail,caseId});save()}
 function badge(txt,c){return '<span class="badge '+c+'">'+txt+'</span>'}
 function selected(){return state.cases.find(c=>c.id===state.selected)||state.cases[0]||null}
+function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function maskId(v){v=String(v||'');if(v.length<=4)return v;return '••••••'+v.slice(-4)}
 function openNew(){document.getElementById('newModal').classList.add('open')}
 function closeNew(){document.getElementById('newModal').classList.remove('open')}
-function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function openProfile(){
+ const u=me();document.getElementById('pName').value=u.name||'';document.getElementById('pEmployeeId').value=u.employeeId||'';document.getElementById('pDept').value=u.dept||'';document.getElementById('pRank').value=u.rank||'Registrar';document.getElementById('pMobile').value=u.mobile||'';document.getElementById('pWhatsapp').value=u.whatsapp||'';document.getElementById('pEmail').value=u.email||'';document.getElementById('pEligible').value=String(u.eligible!==false);document.getElementById('pWhatsAppEnabled').value=String(u.whatsappEnabled!==false);document.getElementById('profileModal').classList.add('open')
+}
+function closeProfile(){document.getElementById('profileModal').classList.remove('open')}
+function saveProfile(){
+ const u=me();u.name=document.getElementById('pName').value.trim();u.employeeId=document.getElementById('pEmployeeId').value.trim();u.dept=document.getElementById('pDept').value.trim();u.rank=document.getElementById('pRank').value;u.mobile=document.getElementById('pMobile').value.trim();u.whatsapp=document.getElementById('pWhatsapp').value.trim();u.email=document.getElementById('pEmail').value.trim();u.eligible=document.getElementById('pEligible').value==='true';u.whatsappEnabled=document.getElementById('pWhatsAppEnabled').value==='true';saveProfiles();addAudit('Update own profile','Mobile/WhatsApp/contact profile updated',null);closeProfile();renderUserBox();render()
+}
+function autoRef(){return 'ED-'+String(Math.floor(Math.random()*9000)+1000)}
+function getRota(spec){
+ const r=ROTA[spec];if(!r)return null;
+ return {first:r.firstId?profiles[r.firstId].name:r.first,firstId:r.firstId||null,second:r.secondId?profiles[r.secondId].name:r.second,secondId:r.secondId||null,third:r.third,hod:r.hod}
+}
 function createConsultation(){
- const patient=document.getElementById('fPatient').value.trim(), mrn=document.getElementById('fMrn').value.trim(), spec=document.getElementById('fSpec').value, priority=document.getElementById('fPriority').value, reason=document.getElementById('fReason').value.trim(), summary=document.getElementById('fSummary').value.trim();
- if(!patient||!spec||!reason){alert('Patient reference, specialty, and reason are required.');return}
- const rota=ROTA[spec], id='C-'+Date.now(), journey='PJ-'+new Date().getFullYear()+'-'+String(Math.floor(Math.random()*900000)+100000);
- const c={id,patient,mrn,specialty:spec,priority,reason,summary,journey,createdAt:now(),createdIso:stamp(),createdBy:me.name,status:'Pending First On-Call',currentLevel:'First On-Call',first:rota.first,second:rota.second,third:rota.third,hod:rota.hod,accepted:false,acceptedBy:null,acceptedAt:null,arrival:false,arrivalAt:null,otp:null,otpBy:null,safety:false,events:[]};
- c.events.push({t:c.createdAt,e:'Consultation created',d:me.name+' → '+spec});
- c.events.push({t:c.createdAt,e:'First On-Call notified',d:rota.first});
- state.cases.unshift(c);state.selected=id;addAudit('Create consultation',patient+' • '+spec+' • '+reason,id);save();closeNew();
- ['fPatient','fMrn','fReason','fSummary'].forEach(x=>document.getElementById(x).value='');document.getElementById('fSpec').value='';render();
+ const patientName=document.getElementById('fName').value.trim(),mrn=document.getElementById('fMrn').value.trim(),nationalId=document.getElementById('fNationalId').value.trim(),bed=document.getElementById('fBed').value.trim(),spec=document.getElementById('fSpec').value,priority=document.getElementById('fPriority').value,patient=document.getElementById('fPatient').value.trim()||autoRef(),reason=document.getElementById('fReason').value.trim(),summary=document.getElementById('fSummary').value.trim();
+ if(!patientName||!bed||!spec||!reason){alert('Patient full name, bed/room, specialty, and reason are required.');return}
+ if(!mrn&&!nationalId){alert('Enter at least one patient identifier: MRN or National ID/Iqama.');return}
+ const rota=getRota(spec),id='C-'+Date.now(),journey='PJ-'+new Date().getFullYear()+'-'+String(Math.floor(Math.random()*900000)+100000),u=me();
+ const c={id,patient,patientName,mrn,nationalId,bed,specialty:spec,priority,reason,summary,journey,createdAt:now(),createdIso:stamp(),createdBy:u.name,status:'Pending First On-Call',currentLevel:'First On-Call',first:rota.first,firstId:rota.firstId,second:rota.second,secondId:rota.secondId,third:rota.third,hod:rota.hod,accepted:false,acceptedBy:null,acceptedAt:null,arrival:false,arrivalAt:null,otp:null,otpBy:null,safety:false,events:[]};
+ c.events.push({t:c.createdAt,e:'Consultation created',d:u.name+' → '+spec+' • '+patientName+' • Bed '+bed});
+ c.events.push({t:c.createdAt,e:'First On-Call notified',d:rota.first+' • WhatsApp attention-call profile '+(rota.firstId&&profiles[rota.firstId].whatsappEnabled?'enabled':'not configured')});
+ state.cases.unshift(c);state.selected=id;addAudit('Create consultation',patientName+' • '+patient+' • '+spec+' • Bed '+bed,id);save();closeNew();
+ ['fName','fMrn','fNationalId','fBed','fPatient','fReason','fSummary'].forEach(x=>document.getElementById(x).value='');document.getElementById('fSpec').value='';render();
 }
 function selectCase(id){state.selected=id;save();render()}
 function generateOTP(){
- const c=selected();if(!c)return;
- c.otp=String(Math.floor(100000+Math.random()*900000));c.otpBy=me.name;c.events.push({t:now(),e:'Arrival OTP generated',d:'Generated by '+me.name});addAudit('Generate arrival OTP',c.patient+' • '+c.specialty,c.id);save();render();
+ const c=selected();if(!c)return;const u=me();
+ c.otp=String(Math.floor(100000+Math.random()*900000));c.otpBy=u.name;c.events.push({t:now(),e:'Arrival OTP generated',d:'Generated by '+u.name+' ('+u.id+')'});addAudit('Generate arrival OTP',c.patientName+' • '+c.specialty,c.id);save();render();
 }
 function safety(){
  const c=selected();if(!c)return;const reason=prompt('Mandatory Safety Admission reason:');if(!reason)return;
@@ -104,42 +152,50 @@ function redirectCase(){
 function escalateSecond(){
  const c=selected();if(!c)return;c.currentLevel='Second On-Call';c.status='Escalated to Second On-Call';c.events.push({t:now(),e:'Escalated to Second On-Call',d:c.second});addAudit('Escalate',c.second,c.id);save();render();
 }
+function whatsappAttention(){
+ const c=selected();if(!c)return;const pid=c.currentLevel==='Second On-Call'?c.secondId:c.firstId;const p=pid?profiles[pid]:null;if(!p||!p.whatsapp){alert('No WhatsApp number is configured for this physician profile.');return}
+ c.events.push({t:now(),e:'WhatsApp attention call requested',d:(p.name||'Physician')+' • '+p.whatsapp+' • DEMO only'});addAudit('WhatsApp attention call request',p.name+' • '+p.whatsapp,c.id);save();alert('Demo: request logged for '+p.name+' at '+p.whatsapp+'. Real calling requires approved WhatsApp Business Calling/API integration.');render()
+}
 function statusBadge(c){
  if(c.safety)return badge('SAFETY ADMISSION','bred');if(c.arrival)return badge('Physical arrival verified','bgreen');if(c.accepted)return badge('Accepted — attendance clock running','bamber');if(c.status.includes('Second'))return badge(c.status,'bpurple');if(c.status.includes('Redirected'))return badge(c.status,'bred');return badge(c.status,'bblue')
 }
+function physicianContact(c){
+ const pid=c.currentLevel==='Second On-Call'?c.secondId:c.firstId,p=pid?profiles[pid]:null;if(!p)return '<div class="banner info">No linked individual physician profile for this rota entry.</div>';
+ return '<div class="profileLine"><span>Physician</span><b>'+esc(p.name)+'</b></div><div class="profileLine"><span>Employee ID</span><span>'+esc(p.employeeId)+'</span></div><div class="profileLine"><span>Rank</span><span>'+esc(p.rank)+'</span></div><div class="profileLine"><span>Mobile</span><span>'+esc(p.mobile)+'</span></div><div class="profileLine"><span>WhatsApp</span><span>'+esc(p.whatsapp)+'</span></div><div class="profileLine"><span>Call Integration</span><span>'+badge(p.whatsappEnabled?'Enabled':'Disabled',p.whatsappEnabled?'bgreen':'bred')+'</span></div>'
+}
 function renderED(){
- const c=selected(), active=state.cases.filter(x=>!x.arrival&&!x.status.includes('Redirected')).length;
- let rows=state.cases.map(x=>'<tr><td><button class="linkbtn" onclick="selectCase(\''+x.id+'\')">'+esc(x.patient)+'</button><div class="sub">'+esc(x.journey)+'</div></td><td>'+esc(x.specialty)+'</td><td>'+statusBadge(x)+'</td><td>'+esc(x.currentLevel)+'</td><td>'+esc(x.createdAt)+'</td></tr>').join('');
- let detail=c?'<div class="grid g2" style="margin-top:14px"><div class="card"><h2>Selected Consultation</h2><div class="sub">'+esc(c.journey)+'</div><h3 style="margin:6px 0">'+esc(c.patient)+' • '+esc(c.specialty)+'</h3><p>'+esc(c.reason)+'</p><div style="margin-bottom:12px">'+statusBadge(c)+'</div><table><tr><th>Rota Level</th><th>Assigned</th></tr><tr><td>First On-Call</td><td>'+esc(c.first)+'</td></tr><tr><td>Second On-Call</td><td>'+esc(c.second)+'</td></tr><tr><td>Third On-Call</td><td>'+esc(c.third)+'</td></tr><tr><td>Head of Department</td><td>'+esc(c.hod)+'</td></tr></table><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="generateOTP()">Generate Arrival OTP</button><button class="btn warn" onclick="escalateSecond()">Escalate to Second</button><button class="btn secondary" onclick="redirectCase()">Close & Redirect</button><button class="btn danger" onclick="safety()">Safety Admission</button></div></div><div class="card"><h2>OTP & Physical Arrival</h2>'+(c.otp?'<div class="otp">'+c.otp+'</div><p class="sub">Patient '+esc(c.patient)+' • '+esc(c.specialty)+' • Generated by '+esc(c.otpBy)+'</p>':'<div class="banner info">No active OTP for this consultation.</div>')+'<div class="banner '+(c.arrival?'ok':'info')+'">'+(c.arrival?'Physical arrival verified at '+esc(c.arrivalAt):'Attendance is complete only after the receiving physician enters the patient-specific ED OTP.')+'</div></div></div><div class="card" style="margin-top:14px"><h2>Patient Journey Audit Trail</h2><div class="timeline">'+c.events.map(x=>'<div class="event"><div>'+esc(x.t)+'</div><div class="dot"></div><div><b>'+esc(x.e)+'</b><small>'+esc(x.d)+'</small></div></div>').join('')+'</div></div>':'';
+ const c=selected(),active=state.cases.filter(x=>!x.arrival&&!x.status.includes('Redirected')).length;
+ let rows=state.cases.map(x=>'<tr><td><button class="linkbtn" onclick="selectCase(\''+x.id+'\')">'+esc(x.patientName)+'</button><div class="sub">'+esc(x.patient)+' • '+esc(x.journey)+'</div></td><td>'+esc(x.bed)+'</td><td>'+esc(x.specialty)+'</td><td>'+statusBadge(x)+'</td><td>'+esc(x.currentLevel)+'</td><td>'+esc(x.createdAt)+'</td></tr>').join('');
+ let detail=c?'<div class="grid g2" style="margin-top:14px"><div class="card"><h2>Selected Consultation</h2><div class="sub">'+esc(c.journey)+' • '+esc(c.patient)+'</div><h3 style="margin:6px 0">'+esc(c.patientName)+'</h3><div class="profileLine"><span>MRN</span><span>'+esc(c.mrn||'—')+'</span></div><div class="profileLine"><span>National ID</span><span>'+esc(c.nationalId?maskId(c.nationalId):'—')+'</span></div><div class="profileLine"><span>Bed / Room</span><b>'+esc(c.bed)+'</b></div><div class="profileLine"><span>Specialty</span><span>'+esc(c.specialty)+'</span></div><div class="profileLine"><span>Reason</span><span>'+esc(c.reason)+'</span></div><div style="margin:12px 0">'+statusBadge(c)+'</div><table><tr><th>Rota Level</th><th>Assigned</th></tr><tr><td>First On-Call</td><td>'+esc(c.first)+'</td></tr><tr><td>Second On-Call</td><td>'+esc(c.second)+'</td></tr><tr><td>Third On-Call</td><td>'+esc(c.third)+'</td></tr><tr><td>Head of Department</td><td>'+esc(c.hod)+'</td></tr></table><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="generateOTP()">Generate Arrival OTP</button><button class="btn success" onclick="whatsappAttention()">WhatsApp Attention Call</button><button class="btn warn" onclick="escalateSecond()">Escalate to Second</button><button class="btn secondary" onclick="redirectCase()">Close & Redirect</button><button class="btn danger" onclick="safety()">Safety Admission</button></div></div><div><div class="card"><h2>Current Physician Profile</h2>'+physicianContact(c)+'</div><div class="card" style="margin-top:14px"><h2>OTP & Physical Arrival</h2>'+(c.otp?'<div class="otp">'+c.otp+'</div><p class="sub">Patient '+esc(c.patientName)+' • '+esc(c.specialty)+' • Generated by '+esc(c.otpBy)+'</p>':'<div class="banner info">No active OTP for this consultation.</div>')+'<div class="banner '+(c.arrival?'ok':'info')+'">'+(c.arrival?'Physical arrival verified at '+esc(c.arrivalAt):'Attendance is complete only after the receiving physician enters the patient-specific ED OTP.')+'</div></div></div></div><div class="card" style="margin-top:14px"><h2>Patient Journey Audit Trail</h2><div class="timeline">'+c.events.map(x=>'<div class="event"><div>'+esc(x.t)+'</div><div class="dot"></div><div><b>'+esc(x.e)+'</b><small>'+esc(x.d)+'</small></div></div>').join('')+'</div></div>':'';
  document.getElementById('app').innerHTML='<div class="actions" style="justify-content:space-between;align-items:center;margin-bottom:14px"><div><h1>ED Live Workspace</h1><div class="sub">All ED consultations visible live to authorized ED users.</div></div><button class="btn primary" onclick="openNew()">＋ New Consultation</button></div>'+
  '<div class="grid g4"><div class="card metric"><span>Active consultations</span><b>'+active+'</b><span>Open ED consults</span></div><div class="card metric"><span>Total created</span><b>'+state.cases.length+'</b><span>This demo browser</span></div><div class="card metric"><span>Awaiting arrival</span><b>'+state.cases.filter(x=>x.accepted&&!x.arrival).length+'</b><span>Accepted, not yet OTP verified</span></div><div class="card metric"><span>Safety Admissions</span><b>'+state.cases.filter(x=>x.safety).length+'</b><span>Open / historical</span></div></div>'+
- '<div class="card" style="margin-top:14px"><div class="actions" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">Active Consultations Board</h2><div class="sub">Create a new consultation from the button above.</div></div><button class="btn secondary" onclick="resetDemo()">Reset Demo</button></div>'+
- (state.cases.length?'<div style="overflow:auto"><table><tr><th>Patient</th><th>Specialty</th><th>Status</th><th>Current Level</th><th>Created</th></tr>'+rows+'</table></div>':'<div class="empty"><b>No consultations yet</b>Click “New Consultation” to create the first ED referral.</div>')+'</div>'+detail+
+ '<div class="card" style="margin-top:14px"><div class="actions" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">Active Consultations Board</h2><div class="sub">Patient name, bed, specialty, status and escalation level.</div></div><button class="btn secondary" onclick="resetDemo()">Reset Demo</button></div>'+
+ (state.cases.length?'<div style="overflow:auto"><table><tr><th>Patient</th><th>Bed</th><th>Specialty</th><th>Status</th><th>Current Level</th><th>Created</th></tr>'+rows+'</table></div>':'<div class="empty"><b>No consultations yet</b>Click “New Consultation” to create the first ED referral.</div>')+'</div>'+detail+
  '<div class="roleLinks"><a href="?user=ED001">ED Desktop</a><a href="?user=ORTH1">First On-Call Mobile</a><a href="?user=ORTH2">Second On-Call Mobile</a></div>';
 }
 function physicianCases(){
- if(uid==='ORTH1')return state.cases.filter(c=>c.specialty==='Orthopedics' && (c.currentLevel==='First On-Call'||c.acceptedBy===me.name));
- return state.cases.filter(c=>c.specialty==='Orthopedics' && (c.currentLevel==='Second On-Call'||c.acceptedBy===me.name));
+ const u=me();if(uid==='ORTH1')return state.cases.filter(c=>c.specialty==='Orthopedics'&&(c.currentLevel==='First On-Call'||c.acceptedBy===u.name));
+ return state.cases.filter(c=>c.specialty==='Orthopedics'&&(c.currentLevel==='Second On-Call'||c.acceptedBy===u.name));
 }
 function renderPhysician(){
- const list=physicianCases(), c=list[0]||null, roleLabel=uid==='ORTH1'?'FIRST ON-CALL':'SECOND ON-CALL';
+ const list=physicianCases(),c=list[0]||null,roleLabel=uid==='ORTH1'?'FIRST ON-CALL':'SECOND ON-CALL';
  document.getElementById('app').innerHTML='<div class="mobile"><div class="phone"><div class="phoneTop"><span>Secure mobile view</span><span>'+roleLabel+'</span></div>'+
- (c?'<div class="card" style="box-shadow:none"><div class="sub">Incoming ED consultation</div><h1 style="margin-top:4px">'+esc(c.specialty)+'</h1><p><b>'+esc(c.patient)+'</b> • '+esc(c.journey)+'</p><div style="margin:10px 0">'+badge(roleLabel,uid==='ORTH1'?'bblue':'bpurple')+'</div><div class="banner info"><b>Reason</b><br>'+esc(c.reason)+(c.summary?'<br><br><b>I-SBAR</b><br>'+esc(c.summary):'')+'</div>'+
+ (c?'<div class="card" style="box-shadow:none"><div class="sub">Incoming ED consultation</div><h1 style="margin-top:4px">'+esc(c.specialty)+'</h1><p><b>'+esc(c.patientName)+'</b><br>'+esc(c.patient)+' • Bed '+esc(c.bed)+'</p><div class="profileLine"><span>MRN</span><span>'+esc(c.mrn||'—')+'</span></div><div class="profileLine"><span>National ID</span><span>'+esc(c.nationalId?maskId(c.nationalId):'—')+'</span></div><div style="margin:10px 0">'+badge(roleLabel,uid==='ORTH1'?'bblue':'bpurple')+'</div><div class="banner info"><b>Reason</b><br>'+esc(c.reason)+(c.summary?'<br><br><b>I-SBAR</b><br>'+esc(c.summary):'')+'</div>'+
  (!c.accepted?'<button class="btn primary" style="width:100%" onclick="accept(\''+c.id+'\')">Accept Consultation</button>':'<div class="banner ok"><b>Consultation accepted.</b><br>30-minute attendance clock started at '+esc(c.acceptedAt)+'.</div>')+
  (c.accepted&&!c.arrival?'<div class="field" style="margin-top:12px"><label>ED physical-arrival OTP</label><input id="otpInput" inputmode="numeric" maxlength="6" placeholder="6-digit code"><button class="btn success" onclick="verify(\''+c.id+'\')" style="margin-top:8px">Verify Physical Arrival</button></div>':'')+
  (c.arrival?'<div class="banner ok"><b>Physical attendance verified</b><br>'+esc(c.arrivalAt)+'</div>':'')+
- '<div class="banner info" style="margin-top:12px">No Reject / Cancel action is available to the receiving physician. Pre-assessment redirect remains an ED action.</div></div>':'<div class="empty"><b>No active consultation for this role</b>'+ (uid==='ORTH2'?'Second On-Call will receive the case after escalation.':'Create an Orthopedics consultation from the ED interface.')+'</div>')+
+ '<div class="banner info" style="margin-top:12px">No Reject / Cancel action is available to the receiving physician. Pre-assessment redirect remains an ED action.</div></div>':'<div class="empty"><b>No active consultation for this role</b>'+(uid==='ORTH2'?'Second On-Call will receive the case after escalation.':'Create an Orthopedics consultation from the ED interface.')+'</div>')+
  '</div><div class="roleLinks"><a href="?user=ED001">ED Desktop</a><a href="?user=ORTH1">First On-Call</a><a href="?user=ORTH2">Second On-Call</a></div></div>';
 }
 function accept(id){
- const c=state.cases.find(x=>x.id===id);if(!c)return;c.accepted=true;c.acceptedBy=me.name;c.acceptedAt=now();c.status='Accepted by '+me.role;c.events.push({t:now(),e:'Consultation accepted',d:me.name+' • 30-minute attendance clock started'});addAudit('Accept Consultation',c.patient+' • '+c.specialty,c.id);save();render()
+ const c=state.cases.find(x=>x.id===id),u=me();if(!c)return;c.accepted=true;c.acceptedBy=u.name;c.acceptedAt=now();c.status='Accepted by '+u.role;c.events.push({t:now(),e:'Consultation accepted',d:u.name+' ('+u.id+') • 30-minute attendance clock started'});addAudit('Accept Consultation',c.patientName+' • '+c.specialty,c.id);save();render()
 }
 function verify(id){
- const c=state.cases.find(x=>x.id===id),v=(document.getElementById('otpInput').value||'').trim();if(!c.otp){alert('No active ED OTP has been generated for this consultation.');return}if(v!==c.otp){alert('Invalid OTP for this patient / consultation / specialty.');return}
- c.arrival=true;c.arrivalAt=now();c.status='Physical arrival verified';c.events.push({t:now(),e:'Physical attendance verified',d:me.name+' entered the correct patient-specific OTP'});c.otp=null;addAudit('Verify Physical Arrival',c.patient+' • '+c.specialty,c.id);save();render()
+ const c=state.cases.find(x=>x.id===id),v=(document.getElementById('otpInput').value||'').trim(),u=me();if(!c.otp){alert('No active ED OTP has been generated for this consultation.');return}if(v!==c.otp){alert('Invalid OTP for this patient / consultation / specialty.');return}
+ c.arrival=true;c.arrivalAt=now();c.status='Physical arrival verified';c.events.push({t:now(),e:'Physical attendance verified',d:u.name+' ('+u.id+') entered the correct patient-specific OTP'});c.otp=null;addAudit('Verify Physical Arrival',c.patientName+' • '+c.specialty,c.id);save();render()
 }
 function resetDemo(){if(confirm('Reset all demo consultations in this browser?')){state={cases:[],selected:null,audit:[]};save();render()}}
-function render(){uid==='ED001'?renderED():renderPhysician()}
+function render(){renderUserBox();uid==='ED001'?renderED():renderPhysician()}
 render();
 </script>
 </body>
