@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ConsultFlow ED — V1</title>
+<style>
+:root{--navy:#073b6f;--blue:#0b66e4;--bg:#f3f7fb;--card:#fff;--line:#dbe6f2;--text:#10243e;--muted:#64748b;--green:#16a34a;--amber:#d97706;--red:#dc2626;--purple:#7c3aed}
+*{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:linear-gradient(100deg,#06396b,#07549c);color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:10}
+.brand{font-weight:800}.brand small{display:block;font-weight:500;opacity:.75}.user{font-size:13px;text-align:right}
+.wrap{max-width:1200px;margin:auto;padding:18px}.grid{display:grid;gap:14px}.g4{grid-template-columns:repeat(4,1fr)}.g2{grid-template-columns:1fr 1fr}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 8px 24px rgba(16,36,62,.05)}
+.metric b{font-size:28px;display:block}.metric span{color:var(--muted);font-size:12px}
+h1{font-size:24px;margin:0}h2{font-size:18px;margin:0 0 12px}.sub{color:var(--muted);font-size:13px;margin-top:5px}
+.btn{border:0;border-radius:10px;padding:10px 13px;font-weight:700;cursor:pointer}.primary{background:var(--blue);color:#fff}.secondary{background:#eef4fb;color:var(--text)}.danger{background:#fee2e2;color:#991b1b}.success{background:#dcfce7;color:#166534}.warn{background:#fef3c7;color:#92400e}
+.actions{display:flex;gap:8px;flex-wrap:wrap}.badge{display:inline-block;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:800}.bblue{background:#dbeafe;color:#1d4ed8}.bgreen{background:#dcfce7;color:#166534}.bred{background:#fee2e2;color:#991b1b}.bamber{background:#fef3c7;color:#92400e}.bpurple{background:#ede9fe;color:#6d28d9}
+table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px solid var(--line);text-align:left;font-size:13px}th{font-size:11px;color:var(--muted);text-transform:uppercase}
+.timeline{display:grid;gap:8px}.event{display:grid;grid-template-columns:62px 12px 1fr;gap:8px;font-size:12px}.dot{width:9px;height:9px;border-radius:50%;background:var(--blue);margin-top:4px}.event small{display:block;color:var(--muted);margin-top:3px}
+.otp{font-size:34px;font-weight:900;letter-spacing:8px;text-align:center;background:#eef5ff;border:1px dashed #7aaef5;border-radius:14px;padding:18px}.field{display:grid;gap:6px}.field label{font-size:12px;color:var(--muted)}input,select,textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:#fff}textarea{min-height:72px}
+.banner{padding:12px;border-radius:12px;margin-bottom:12px}.info{background:#e0f2fe;color:#075985}.alert{background:#fee2e2;color:#991b1b}.ok{background:#dcfce7;color:#166534}
+.mobile{max-width:430px;margin:auto}.phone{border:1px solid #cbd5e1;border-radius:26px;padding:14px;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.12)}.phoneTop{display:flex;justify-content:space-between;color:var(--muted);font-size:11px;margin-bottom:12px}
+.roleLinks{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}.roleLinks a{color:var(--blue);font-size:12px;text-decoration:none}
+.hidden{display:none}
+@media(max-width:800px){.g4,.g2{grid-template-columns:1fr}.wrap{padding:12px}header{align-items:flex-start}.user{font-size:11px}.desktopOnly{display:none}}
+</style>
+</head>
+<body>
+<header><div class="brand">ConsultFlow ED<small>V1 Clinical Workflow Prototype</small></div><div class="user" id="userBox"></div></header>
+<div class="wrap" id="app"></div>
+<script>
+const USERS={
+ ED001:{id:'ED001',name:'Dr. Ahmed Alharbi',role:'ED Physician',dept:'Emergency Department'},
+ ORTH1:{id:'ORTH1',name:'Dr. Nasser B.',role:'First On-Call',dept:'Orthopedics'},
+ ORTH2:{id:'ORTH2',name:'Dr. Abdullah T.',role:'Second On-Call',dept:'Orthopedics'}
+};
+const q=new URLSearchParams(location.search);
+const uid=q.get('user')||'ED001';
+const me=USERS[uid]||USERS.ED001;
+document.getElementById('userBox').innerHTML='<b>'+me.name+'</b><br>'+me.role+' • '+me.dept;
+const seed={
+ patient:'ED-4821',journey:'PJ-2026-004821',specialty:'Orthopedics',sent:'10:00',
+ first:'Dr. Nasser B.',second:'Dr. Abdullah T.',third:'Dr. Faisal M.',hod:'Dr. Waleed S.',
+ status:'Pending First On-Call',accepted:false,acceptedBy:null,acceptedAt:null,arrival:false,arrivalAt:null,
+ otp:null,otpBy:null,safety:false,
+ events:[
+  {t:'10:00',e:'Consultation created',d:'ED → Orthopedics'},
+  {t:'10:00',e:'First On-Call notified',d:'Push + WhatsApp attention-call placeholder'}
+ ]
+};
+let st;
+try{st=JSON.parse(localStorage.getItem('consultflow_demo_'+uid))||structuredClone(seed)}catch(e){st=structuredClone(seed)}
+function save(){localStorage.setItem('consultflow_demo_'+uid,JSON.stringify(st))}
+function now(){return new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}
+function event(e,d){st.events.push({t:now(),e:e,d:d});save()}
+function badge(txt,c){return '<span class="badge '+c+'">'+txt+'</span>'}
+function render(){
+ if(uid==='ED001') renderED();
+ else renderPhysician();
+}
+function reset(){localStorage.removeItem('consultflow_demo_'+uid);st=structuredClone(seed);render()}
+function renderED(){
+ const status=st.safety?badge('SAFETY ADMISSION','bred'):st.arrival?badge('Physical arrival verified','bgreen'):st.accepted?badge('Accepted — attendance clock running','bamber'):badge(st.status,'bblue');
+ document.getElementById('app').innerHTML=
+ '<div class="grid g4">'+
+ '<div class="card metric"><span>Active consultations</span><b>1</b><span>Current ED journey</span></div>'+
+ '<div class="card metric"><span>Patient</span><b style="font-size:22px">'+st.patient+'</b><span>'+st.journey+'</span></div>'+
+ '<div class="card metric"><span>Specialty</span><b style="font-size:22px">'+st.specialty+'</b><span>First → Second → Third → HOD → Med Admin</span></div>'+
+ '<div class="card metric"><span>Status</span><div style="margin-top:12px">'+status+'</div></div></div>'+
+ '<div class="grid g2" style="margin-top:14px"><div class="card"><h2>ED Live Case</h2>'+
+ '<table><tr><th>Stage</th><th>Assigned</th><th>Status</th></tr>'+
+ '<tr><td>First On-Call</td><td>'+st.first+'</td><td>'+(!st.accepted&&!st.safety?badge('Current','bblue'):'—')+'</td></tr>'+
+ '<tr><td>Second On-Call</td><td>'+st.second+'</td><td>Standby</td></tr>'+
+ '<tr><td>Third On-Call</td><td>'+st.third+'</td><td>'+ (st.safety?badge('Safety escalation','bred'):'Standby')+'</td></tr>'+
+ '<tr><td>Head of Department</td><td>'+st.hod+'</td><td>FYI / escalation</td></tr></table>'+
+ '<div class="actions" style="margin-top:14px"><button class="btn primary" onclick="generateOTP()">Generate Arrival OTP</button>'+
+ '<button class="btn danger" onclick="safety()">Activate Safety Admission</button><button class="btn secondary" onclick="reset()">Reset demo</button></div></div>'+
+ '<div class="card"><h2>OTP Workspace</h2>'+
+ (st.otp?'<div class="otp">'+st.otp+'</div><p class="sub">Patient '+st.patient+' • '+st.specialty+' • Generated by '+st.otpBy+' • one-time demo code</p>':'<div class="banner info">No active OTP. Generate one only for this patient / consultation / specialty.</div>')+
+ '<div class="banner '+(st.arrival?'ok':'info')+'">'+(st.arrival?'Physical attendance verified at '+st.arrivalAt:'Timer stops only after the receiving physician enters the patient-specific ED OTP.')+'</div></div></div>'+
+ '<div class="card" style="margin-top:14px"><h2>Patient Journey Audit Trail</h2><div class="timeline">'+st.events.map(function(x){return '<div class="event"><div>'+x.t+'</div><div class="dot"></div><div><b>'+x.e+'</b><small>'+x.d+'</small></div></div>'}).join('')+'</div></div>'+
+ '<div class="roleLinks"><a href="?user=ED001">ED Desktop</a><a href="?user=ORTH1">First On-Call Mobile</a><a href="?user=ORTH2">Second On-Call Mobile</a></div>';
+}
+function generateOTP(){
+ st.otp=String(Math.floor(100000+Math.random()*900000));st.otpBy=me.name;event('Arrival OTP generated','Requested/generated by '+me.name+' for '+st.patient+' • '+st.specialty);render();
+}
+function safety(){
+ const reason=prompt('Mandatory Safety Admission reason:');
+ if(!reason)return;
+ st.safety=true;st.status='Safety Admission — awaiting physical acceptance';event('Safety Admission activated',reason+' • Third On-Call + HOD + Medical Administration On-Call + Medical Administration + CQI&PS notified');render();
+}
+function renderPhysician(){
+ const isSecond=uid==='ORTH2';
+ document.getElementById('app').innerHTML='<div class="mobile"><div class="phone"><div class="phoneTop"><span>Secure mobile view</span><span>'+me.role+'</span></div>'+
+ '<div class="card" style="box-shadow:none"><div class="sub">Incoming ED consultation</div><h1 style="margin-top:4px">'+st.specialty+'</h1><p>'+st.patient+' • '+st.journey+'</p>'+
+ '<div style="margin:10px 0">'+(isSecond?badge('SECOND ON-CALL','bpurple'):badge('FIRST ON-CALL','bblue'))+'</div>'+
+ '<div class="banner info"><b>I-SBAR summary</b><br>ED assessment completed. Specialty review requested. Patient remains under ED monitoring.</div>'+
+ (!st.accepted?'<button class="btn primary" style="width:100%" onclick="accept()">Accept Consultation</button>':'<div class="banner ok"><b>Consultation accepted.</b><br>30-minute attendance clock is now attributed to this physician.</div>')+
+ (st.accepted&&!st.arrival?'<div class="field" style="margin-top:12px"><label>ED physical-arrival OTP</label><input id="otpInput" inputmode="numeric" maxlength="6" placeholder="6-digit code"><button class="btn success" onclick="verify()" style="margin-top:8px">Verify Physical Arrival</button></div>':'')+
+ (st.arrival?'<div class="banner ok"><b>Physical attendance verified</b><br>'+st.arrivalAt+'</div>':'')+
+ '<div class="banner info" style="margin-top:12px">The receiving physician has no Reject/Cancel button. Any pre-assessment redirect is controlled by ED.</div>'+
+ '</div><button class="btn secondary" style="width:100%;margin-top:10px" onclick="reset()">Reset this device demo</button></div>'+
+ '<div class="roleLinks"><a href="?user=ED001">ED Desktop</a><a href="?user=ORTH1">First On-Call</a><a href="?user=ORTH2">Second On-Call</a></div></div>';
+}
+function accept(){st.accepted=true;st.acceptedBy=me.name;st.acceptedAt=now();st.status='Accepted by '+me.role;event('Consultation accepted',me.name+' • '+me.role+' • 30-minute attendance clock started');render()}
+function verify(){
+ const v=(document.getElementById('otpInput').value||'').trim();
+ if(!st.otp){alert('No ED OTP is available in this device demo. For V1 static hosting, actions are not synchronized across devices yet.');return}
+ if(v!==st.otp){alert('Invalid OTP for this patient / consultation.');return}
+ st.arrival=true;st.arrivalAt=now();event('Physical attendance verified',me.name+' entered the correct patient-specific OTP');st.otp=null;save();render()
+}
+render();
+</script>
+</body>
+</html>
