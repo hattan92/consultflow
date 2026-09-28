@@ -35,7 +35,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
 </head>
 <body>
 <header>
-  <div class="brand">ConsultFlow ED<small>V1.6 Clinical Workflow Prototype</small></div>
+  <div class="brand">ConsultFlow ED<small>V1.7 Clinical Workflow Prototype</small></div>
   <div class="user" id="userBox"></div>
 </header>
 <div class="wrap" id="app"></div>
@@ -68,6 +68,42 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
     </div>
     <div class="banner info" style="margin-top:12px">MRN / National ID / Iqama is mandatory in one identifier field. All five I-SBAR sections are separate mandatory boxes.</div>
     <div class="actions" style="justify-content:flex-end"><button class="btn secondary" onclick="closeNew()">Cancel</button><button class="btn primary" onclick="createConsultation()">Create & Send Consultation</button></div>
+  </div>
+</div>
+
+<div class="modal" id="escalationModal">
+  <div class="modalbox">
+    <div class="modalhead">
+      <div><h2>Manual Escalation</h2><div class="sub">ED may manually escalate to a higher rota level when clinically or operationally required.</div></div>
+      <button class="x" onclick="closeManualEscalation()">✕</button>
+    </div>
+    <div class="banner info" id="escalationPatientSummary"></div>
+    <input type="hidden" id="eCaseId">
+    <div class="formgrid">
+      <div class="field"><label>Current Level</label><input id="eCurrentLevel" disabled></div>
+      <div class="field"><label>Escalate To *</label>
+        <select id="eTargetLevel">
+          <option value="">Select higher escalation level</option>
+          <option>Second On-Call</option>
+          <option>Third On-Call</option>
+          <option>Head of Department</option>
+          <option>Medical Administration On-Call</option>
+        </select>
+      </div>
+      <div class="field span2"><label>Mandatory Reason for Manual Escalation *</label>
+        <textarea id="eReason" placeholder="Document why manual escalation is required."></textarea>
+      </div>
+      <div class="field span2">
+        <div class="readonlyBox">
+          <b>Automatic escalation remains active independently:</b> after a physician accepts the consultation, the 30-minute attendance clock runs. If the threshold is exceeded and ED confirms care impact, the final 3-minute re-contact occurs; after the final ED confirmation, the system escalates automatically to the next rota level.<br><br>
+          <b>Manual escalation:</b> ED can escalate earlier to any higher level. The action, reason, user, timestamp, previous level, and new level are audit logged. Any existing physician delay is preserved in KPI history.
+        </div>
+      </div>
+    </div>
+    <div class="actions" style="justify-content:flex-end;margin-top:14px">
+      <button class="btn secondary" onclick="closeManualEscalation()">Cancel</button>
+      <button class="btn warn" onclick="submitManualEscalation()">Confirm Manual Escalation</button>
+    </div>
   </div>
 </div>
 
@@ -288,7 +324,7 @@ function automaticEscalate(id){
  if(!cc.acceptHistory)cc.acceptHistory=[];
  const active=cc.acceptHistory[cc.acceptHistory.length-1];
  if(active&&!active.closedIso){active.closedIso=stamp();active.outcome='Escalated after attendance delay';active.excessMs=Math.max(0,msSince(active.acceptedIso)-ATTENDANCE_LIMIT_MS)}
- cc.events.push({t:now(),e:'Automatic escalation to '+toLevel,d:'Previous accepting physician: '+fromPhysician+'. Delay preserved in audit/KPI history.'});
+ if(!cc.escalationHistory)cc.escalationHistory=[];cc.escalationHistory.push({mode:'AUTOMATIC',fromLevel,toLevel,reason:'30-minute delay + ED care-impact decision + final 3-minute re-contact workflow',byId:me().id,by:me().name,iso:stamp(),previousPhysician:fromPhysician});cc.events.push({t:now(),e:'Automatic escalation to '+toLevel,d:'Protocol-driven escalation after delay workflow. Previous accepting physician: '+fromPhysician+'. Delay preserved in audit/KPI history.'});
  cc.currentLevel=toLevel;cc.status='Escalated to '+toLevel+' — awaiting acceptance';
  cc.accepted=false;cc.acceptedBy=null;cc.acceptedAt=null;cc.acceptedIso=null;cc.acceptedLevel=null;cc.delayPhase=null;cc.recontactStartedIso=null;cc.recontactDeadlineIso=null;
  addAudit('Automatic escalation',fromLevel+' → '+toLevel,cc.id);notifyUser(assigneeIdForLevel(cc,toLevel),'Escalated consultation: '+cc.patientName+' • '+cc.specialty+' • '+toLevel,cc.id);if(toLevel==='Medical Administration On-Call')notifyRole('medadmin_oncall','Consultation escalated to Medical Administration On-Call: '+cc.patientName,cc.id);save();render()
@@ -497,7 +533,7 @@ function caseMetrics(cases){
 function kpiHtml(m){return '<div class="kpis"><div class="kpi"><span>Total consultations</span><b>'+m.total+'</b></div><div class="kpi"><span>Within 30-min attendance KPI</span><b>'+m.within+'</b></div><div class="kpi"><span>Delayed >30 min</span><b>'+m.delayed+'</b></div><div class="kpi"><span>Median accept</span><b>'+(m.medianAccept==null?'—':m.medianAccept+'m')+'</b></div><div class="kpi"><span>Median attendance</span><b>'+(m.medianAttendance==null?'—':m.medianAttendance+'m')+'</b></div></div>'
 }
 function roleNav(){
- return '<div class="roleNav"><a href="?user=ED001&v=16">ED Physician</a><a href="?user=EDN001&v=16">ED Nurse</a><a href="?user=EDTL001&v=16">ED Team Leader</a><a href="?user=EDHOD001&v=16">ED HOD</a><a href="?user=ORTH1&v=16">First On-Call</a><a href="?user=ORTH2&v=16">Second On-Call</a><a href="?user=ORTH3&v=16">Third On-Call</a><a href="?user=ORTHHOD&v=16">Specialty HOD</a><a href="?user=MEDON1&v=16">Med Admin On-Call</a><a href="?user=MEDADM1&v=16">Medical Administration</a><a href="?user=CQI001&v=16">CQI & PS</a><a href="?user=SYS001&v=16">System Admin</a></div>'
+ return '<div class="roleNav"><a href="?user=ED001&v=17">ED Physician</a><a href="?user=EDN001&v=17">ED Nurse</a><a href="?user=EDTL001&v=17">ED Team Leader</a><a href="?user=EDHOD001&v=17">ED HOD</a><a href="?user=ORTH1&v=17">First On-Call</a><a href="?user=ORTH2&v=17">Second On-Call</a><a href="?user=ORTH3&v=17">Third On-Call</a><a href="?user=ORTHHOD&v=17">Specialty HOD</a><a href="?user=MEDON1&v=17">Med Admin On-Call</a><a href="?user=MEDADM1&v=17">Medical Administration</a><a href="?user=CQI001&v=17">CQI & PS</a><a href="?user=SYS001&v=17">System Admin</a></div>'
 }
 function openNew(){document.getElementById('newModal').classList.add('open')}
 function closeNew(){document.getElementById('newModal').classList.remove('open')}
@@ -531,11 +567,45 @@ function selectCase(id){state.selected=id;save();render()}
 function generateOTP(){const cc=selected();if(!cc)return;if(canGenerateOtp())generateCaseOtp(cc.id,'arrival');else requestCaseOtp(cc.id,'arrival')}
 function safety(){const cc=selected();if(cc)requestSafetyAdmission(cc.id)}
 function redirectCase(){const cc=selected();if(cc)closeRedirect(cc.id)}
-function escalateSecond(){
- const c=selected();if(!c)return;
- const from=c.currentLevel;c.currentLevel='Second On-Call';c.status='Escalated to Second On-Call — awaiting acceptance';c.accepted=false;c.acceptedBy=null;c.acceptedAt=null;c.acceptedIso=null;c.acceptedLevel=null;c.delayPhase=null;c.recontactStartedIso=null;c.recontactDeadlineIso=null;
- c.events.push({t:now(),e:'Manual ED escalation to Second On-Call',d:c.second+' • previous stage '+from});addAudit('Manual escalation','→ Second On-Call: '+c.second,c.id);save();render();
+const ESCALATION_LEVELS=['First On-Call','Second On-Call','Third On-Call','Head of Department','Medical Administration On-Call'];
+function levelIndex(level){return ESCALATION_LEVELS.indexOf(level)}
+function openManualEscalation(id){
+ const cc=state.cases.find(x=>x.id===id);if(!cc||!isEDClinical())return;
+ if(cc.arrival){alert('Physical attendance is already verified. Escalation of attendance is no longer required.');return}
+ document.getElementById('eCaseId').value=cc.id;
+ document.getElementById('eCurrentLevel').value=cc.currentLevel;
+ document.getElementById('eTargetLevel').value='';
+ document.getElementById('eReason').value='';
+ document.getElementById('escalationPatientSummary').innerHTML='<b>'+esc(cc.patientName)+'</b> • '+esc(cc.specialty)+' • Bed '+esc(cc.bed)+'<br>Current level: '+esc(cc.currentLevel)+' • Current assignee: '+esc(assigneeNameForLevel(cc,cc.currentLevel));
+ Array.from(document.getElementById('eTargetLevel').options).forEach(o=>{if(!o.value)return;o.disabled=levelIndex(o.value)<=levelIndex(cc.currentLevel)});
+ document.getElementById('escalationModal').classList.add('open')
 }
+function closeManualEscalation(){document.getElementById('escalationModal').classList.remove('open')}
+function manualEscalateCase(cc,toLevel,reason){
+ const u=me(),fromLevel=cc.currentLevel,fromPhysician=cc.acceptedBy||assigneeNameForLevel(cc,fromLevel),toAssignee=assigneeNameForLevel(cc,toLevel);
+ if(levelIndex(toLevel)<=levelIndex(fromLevel)){alert('Manual escalation must move to a higher rota level.');return false}
+ if(!cc.escalationHistory)cc.escalationHistory=[];
+ if(!cc.acceptHistory)cc.acceptHistory=[];
+ const active=cc.acceptHistory[cc.acceptHistory.length-1];
+ if(active&&!active.closedIso){
+   active.closedIso=stamp();active.outcome='Manual escalation by ED';active.excessMs=Math.max(0,msSince(active.acceptedIso)-ATTENDANCE_LIMIT_MS)
+ }
+ cc.escalationHistory.push({mode:'MANUAL',fromLevel,toLevel,reason,byId:u.id,by:u.name,iso:stamp(),previousPhysician:fromPhysician});
+ cc.events.push({t:now(),e:'Manual escalation: '+fromLevel+' → '+toLevel,d:'By '+u.name+' • Reason: '+reason+' • Previous assignee: '+fromPhysician+' • New assignee: '+toAssignee});
+ cc.currentLevel=toLevel;cc.status='Manually escalated to '+toLevel+' — awaiting acceptance';
+ cc.accepted=false;cc.acceptedBy=null;cc.acceptedById=null;cc.acceptedAt=null;cc.acceptedIso=null;cc.acceptedLevel=null;cc.delayPhase=null;cc.recontactStartedIso=null;cc.recontactDeadlineIso=null;
+ addAudit('Manual escalation',fromLevel+' → '+toLevel+' • '+reason,cc.id);
+ notifyUser(assigneeIdForLevel(cc,toLevel),'Manual ED escalation: '+cc.patientName+' • '+cc.specialty+' • '+toLevel,cc.id);
+ if(toLevel==='Head of Department')notifySpecialtyHod(cc.specialty,'Consultation manually escalated to HOD: '+cc.patientName,cc.id);
+ if(toLevel==='Medical Administration On-Call')notifyRole('medadmin_oncall','Consultation manually escalated to Medical Administration On-Call: '+cc.patientName,cc.id);
+ return true
+}
+function submitManualEscalation(){
+ const id=document.getElementById('eCaseId').value,cc=state.cases.find(x=>x.id===id),toLevel=document.getElementById('eTargetLevel').value,reason=document.getElementById('eReason').value.trim();
+ if(!cc)return;if(!toLevel){alert('Select the escalation level.');return}if(!reason){alert('Reason for manual escalation is mandatory.');return}
+ if(manualEscalateCase(cc,toLevel,reason)){save();closeManualEscalation();render()}
+}
+function escalateSecond(){const cc=selected();if(cc)openManualEscalation(cc.id)}
 function whatsappAttention(){
  const cc=selected();if(!cc)return;const a=currentAssignee(cc),p=a.id?profiles[a.id]:null;
  if(!p||!p.whatsapp){alert('No WhatsApp number is configured for the current on-call physician at '+cc.currentLevel+'.');return}
@@ -563,12 +633,16 @@ function referralSource(c){
 }
 function workflowSummary(c){
  const current=assigneeNameForLevel(c,c.currentLevel);
- return statusBadge(c)+'<div class="sub" style="margin-top:5px">'+esc(c.currentLevel)+' • '+esc(current||'—')+'</div>'
+ return statusBadge(c)+'<div class="sub" style="margin-top:5px">'+esc(c.currentLevel)+' • '+esc(current||'—')+'</div><div class="sub">Auto escalation protocol: Active</div>'
 }
 function renderED(){
  const c=selected(),active=state.cases.filter(x=>!x.arrival&&!String(x.status||'').includes('Closed & Redirected')).length;
  let rows=state.cases.filter(x=>!String(x.status||'').includes('Closed & Redirected')).map(x=>{const ref=referralSource(x);return '<tr><td><button class="linkbtn" onclick="selectCase(\''+x.id+'\')">'+esc(x.patientName)+'</button><div class="sub">'+esc(x.patient)+' • '+esc(x.journey)+'</div></td><td><b>'+esc(x.bed)+'</b></td><td>'+esc(x.specialty)+'</td><td><b>'+esc(ref.clinician)+'</b><div class="sub">From: '+esc(ref.source)+' • '+esc(ref.time)+'</div></td><td>'+workflowSummary(x)+'</td></tr>'}).join('');
- let detail=c?'<div class="grid g2" style="margin-top:14px"><div class="card"><h2>Selected Consultation</h2><div class="sub">'+esc(c.journey)+' • '+esc(c.patient)+'</div><h3 style="margin:6px 0">'+esc(c.patientName)+'</h3><div class="profileLine"><span>MRN / National ID</span><span>'+esc(patientIdentifier(c))+'</span></div><div class="profileLine"><span>Bed / Room</span><b>'+esc(c.bed)+'</b></div><div class="profileLine"><span>Specialty</span><span>'+esc(c.specialty)+'</span></div><div class="profileLine"><span>Priority</span><span>'+esc(c.priority||'Standard')+'</span></div><div class="profileLine"><span>Referred by</span><b>'+esc(referralSource(c).clinician)+'</b></div><div class="profileLine"><span>From</span><span>'+esc(referralSource(c).source)+'</span></div><div class="profileLine"><span>Referral time</span><span>'+esc(c.createdAt||'—')+'</span></div><div class="profileLine"><span>Reason</span><span>'+esc(c.reason)+'</span></div>'+(c.redirect?'<div class="notice dangerNotice"><b>ED Redirect</b><br>To: '+esc(c.redirect.target)+'<br>Mandatory reason: '+esc(c.redirect.reason)+'<br>Redirected by: '+esc(c.redirect.by)+'<br>CC: '+esc((c.redirect.ccRecipients||[]).join(' • '))+'</div>':'')+'<div style="margin-top:14px"><h3 style="margin-bottom:8px">Mandatory I-SBAR</h3>'+renderIsbar(c)+'</div><div style="margin:12px 0">'+statusBadge(c)+'</div>'+timerHtml(c)+delayDecisionHtml(c)+'<table><tr><th>Rota Level</th><th>Assigned</th></tr><tr><td>First On-Call</td><td>'+esc(c.first)+'</td></tr><tr><td>Second On-Call</td><td>'+esc(c.second)+'</td></tr><tr><td>Third On-Call</td><td>'+esc(c.third)+'</td></tr><tr><td>Head of Department</td><td>'+esc(c.hod)+'</td></tr></table><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="generateOTP()">'+(canGenerateOtp()?'Generate Arrival OTP':'Request Arrival OTP')+'</button><button class="btn success" onclick="whatsappAttention()">WhatsApp Attention Call</button><button class="btn warn" onclick="escalateSecond()">Escalate to Second</button><button class="btn secondary" onclick="redirectCase()">Close & Redirect</button><button class="btn danger" onclick="safety()">Safety Admission</button>'+(c.safety&&c.safety.requested&&!c.safety.active&&isEDSupervisor()?'<button class="btn danger" onclick="confirmSafetyAdmission(\''+c.id+'\')">Confirm Safety Admission</button>':'')+'</div></div><div><div class="card"><h2>Current Physician Profile</h2>'+physicianContact(c)+'</div><div class="card" style="margin-top:14px"><h2>OTP & Physical Arrival</h2>'+otpCard(c,'arrival')+(c.safety&&c.safety.active?'<h3 style="margin:14px 0 8px">Safety Admission OTP</h3>'+otpCard(c,'safety')+safetyTimerHtml(c):'')+'<div class="banner '+(c.arrival?'ok':'info')+'">'+(c.arrival?'Physical arrival verified at '+esc(c.arrivalAt):'Attendance is complete only after the receiving physician enters the patient-specific ED OTP.')+'</div></div></div></div><div class="card" style="margin-top:14px"><h2>Patient Journey Audit Trail</h2><div class="timeline">'+c.events.map(x=>'<div class="event"><div>'+esc(x.t)+'</div><div class="dot"></div><div><b>'+esc(x.e)+'</b><small>'+esc(x.d)+'</small></div></div>').join('')+'</div></div>':'';
+ let detail=c?'<div class="grid g2" style="margin-top:14px"><div class="card"><h2>Selected Consultation</h2><div class="sub">'+esc(c.journey)+' • '+esc(c.patient)+'</div><h3 style="margin:6px 0">'+esc(c.patientName)+'</h3><div class="profileLine"><span>MRN / National ID</span><span>'+esc(patientIdentifier(c))+'</span></div><div class="profileLine"><span>Bed / Room</span><b>'+esc(c.bed)+'</b></div><div class="profileLine"><span>Specialty</span><span>'+esc(c.specialty)+'</span></div><div class="profileLine"><span>Priority</span><span>'+esc(c.priority||'Standard')+'</span></div><div class="profileLine"><span>Referred by</span><b>'+esc(referralSource(c).clinician)+'</b></div><div class="profileLine"><span>From</span><span>'+esc(referralSource(c).source)+'</span></div><div class="profileLine"><span>Referral time</span><span>'+esc(c.createdAt||'—')+'</span></div><div class="profileLine"><span>Reason</span><span>'+esc(c.reason)+'</span></div>'+(c.redirect?'<div class="notice dangerNotice"><b>ED Redirect</b><br>To: '+esc(c.redirect.target)+'<br>Mandatory reason: '+esc(c.redirect.reason)+'<br>Redirected by: '+esc(c.redirect.by)+'<br>CC: '+esc((c.redirect.ccRecipients||[]).join(' • '))+'</div>':'')+'<div style="margin-top:14px"><h3 style="margin-bottom:8px">Mandatory I-SBAR</h3>'+renderIsbar(c)+'</div><div style="margin:12px 0">'+statusBadge(c)+'</div>'+
+  (c.escalationHistory&&c.escalationHistory.length?'<div class="notice"><b>Latest escalation:</b> '+esc(c.escalationHistory[c.escalationHistory.length-1].mode)+' • '+esc(c.escalationHistory[c.escalationHistory.length-1].fromLevel)+' → '+esc(c.escalationHistory[c.escalationHistory.length-1].toLevel)+'<br>Reason: '+esc(c.escalationHistory[c.escalationHistory.length-1].reason)+'</div>':'')+
+  timerHtml(c)+delayDecisionHtml(c)+'<table><tr><th>Rota Level</th><th>Assigned</th></tr><tr><td>First On-Call</td><td>'+esc(c.first)+'</td></tr><tr><td>Second On-Call</td><td>'+esc(c.second)+'</td></tr><tr><td>Third On-Call</td><td>'+esc(c.third)+'</td></tr><tr><td>Head of Department</td><td>'+esc(c.hod)+'</td></tr><tr><td>Medical Administration On-Call</td><td>'+esc(profiles.MEDON1.name)+'</td></tr></table>'+
+  '<div class="notice" style="margin-top:12px"><b>Escalation Pathway</b><br>Manual: ED can escalate to any higher level with a mandatory reason.<br>Automatic: 30-minute attendance delay → ED care-impact decision → final 3-minute re-contact → ED confirmation → next rota level.</div>'+
+  '<div class="actions" style="margin-top:14px"><button class="btn primary" onclick="generateOTP()">'+(canGenerateOtp()?'Generate Arrival OTP':'Request Arrival OTP')+'</button><button class="btn success" onclick="whatsappAttention()">WhatsApp Attention Call</button><button class="btn warn" onclick="escalateSecond()">Manual Escalation</button><button class="btn secondary" onclick="redirectCase()">Close & Redirect</button><button class="btn danger" onclick="safety()">Safety Admission</button>'+(c.safety&&c.safety.requested&&!c.safety.active&&isEDSupervisor()?'<button class="btn danger" onclick="confirmSafetyAdmission(\''+c.id+'\')">Confirm Safety Admission</button>':'')+'</div></div><div><div class="card"><h2>Current Physician Profile</h2>'+physicianContact(c)+'</div><div class="card" style="margin-top:14px"><h2>OTP & Physical Arrival</h2>'+otpCard(c,'arrival')+(c.safety&&c.safety.active?'<h3 style="margin:14px 0 8px">Safety Admission OTP</h3>'+otpCard(c,'safety')+safetyTimerHtml(c):'')+'<div class="banner '+(c.arrival?'ok':'info')+'">'+(c.arrival?'Physical arrival verified at '+esc(c.arrivalAt):'Attendance is complete only after the receiving physician enters the patient-specific ED OTP.')+'</div></div></div></div><div class="card" style="margin-top:14px"><h2>Patient Journey Audit Trail</h2><div class="timeline">'+c.events.map(x=>'<div class="event"><div>'+esc(x.t)+'</div><div class="dot"></div><div><b>'+esc(x.e)+'</b><small>'+esc(x.d)+'</small></div></div>').join('')+'</div></div>':'';
  document.getElementById('app').innerHTML='<div class="actions" style="justify-content:space-between;align-items:center;margin-bottom:14px"><div><h1>ED Live Workspace</h1><div class="sub">All ED consultations visible live to authorized ED users.</div></div><button class="btn primary" onclick="openNew()">＋ New Consultation</button></div>'+
  '<div class="grid g4"><div class="card metric"><span>Active consultations</span><b>'+active+'</b><span>Open ED consults</span></div><div class="card metric"><span>Total created</span><b>'+state.cases.length+'</b><span>This demo browser</span></div><div class="card metric"><span>Awaiting arrival</span><b>'+state.cases.filter(x=>x.accepted&&!x.arrival).length+'</b><span>Accepted, not yet OTP verified</span></div><div class="card metric"><span>Safety Admissions</span><b>'+state.cases.filter(x=>x.safety).length+'</b><span>Open / historical</span></div></div>'+
  '<div class="card" style="margin-top:14px"><div class="actions" style="justify-content:space-between;align-items:center"><div><h2 style="margin:0">Active Consultations Board</h2><div class="sub">Compact live view: patient, destination specialty, who referred the case, and current workflow.</div></div><button class="btn secondary" onclick="resetDemo()">Reset Demo</button></div>'+
