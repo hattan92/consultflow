@@ -35,7 +35,7 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
 </head>
 <body>
 <header>
-  <div class="brand">ConsultFlow ED<small>V1.3 Clinical Workflow Prototype</small></div>
+  <div class="brand">ConsultFlow ED<small>V1.4 Clinical Workflow Prototype</small></div>
   <div class="user" id="userBox"></div>
 </header>
 <div class="wrap" id="app"></div>
@@ -68,6 +68,30 @@ table{width:100%;border-collapse:collapse}th,td{padding:10px;border-bottom:1px s
     </div>
     <div class="banner info" style="margin-top:12px">MRN / National ID / Iqama is mandatory in one identifier field. All five I-SBAR sections are separate mandatory boxes.</div>
     <div class="actions" style="justify-content:flex-end"><button class="btn secondary" onclick="closeNew()">Cancel</button><button class="btn primary" onclick="createConsultation()">Create & Send Consultation</button></div>
+  </div>
+</div>
+
+<div class="modal" id="onwardModal">
+  <div class="modalbox">
+    <div class="modalhead"><div><h2>Continue Referral to Another Specialty</h2><div class="sub">Onward Referral after physical assessment — same Patient Consultation Journey.</div></div><button class="x" onclick="closeOnward()">✕</button></div>
+    <div class="banner info" id="onwardPatientSummary"></div>
+    <input type="hidden" id="oSourceCaseId">
+    <div class="formgrid">
+      <div class="field"><label>Current Specialty</label><input id="oCurrentSpec" disabled></div>
+      <div class="field"><label>Refer To Specialty *</label><select id="oTargetSpec"><option value="">Select next specialty</option><option>Orthopedics</option><option>Internal Medicine</option><option>General Surgery</option><option>Cardiology</option><option>Neurosurgery</option></select></div>
+      <div class="field span2"><label>Reason for Onward Referral *</label><input id="oReason" placeholder="Why another specialty is required after your assessment"></div>
+      <div class="field span2"><label>New I-SBAR — Mandatory *</label>
+        <div class="isbarTable">
+          <div class="isbarCard"><div class="isbarHead"><b>I</b>Identification *</div><div class="isbarBody"><textarea id="oIsbarI"></textarea></div></div>
+          <div class="isbarCard"><div class="isbarHead"><b>S</b>Situation *</div><div class="isbarBody"><textarea id="oIsbarS" placeholder="Current situation after your assessment"></textarea></div></div>
+          <div class="isbarCard"><div class="isbarHead"><b>B</b>Background *</div><div class="isbarBody"><textarea id="oIsbarB" placeholder="Relevant background for the next specialty"></textarea></div></div>
+          <div class="isbarCard"><div class="isbarHead"><b>A</b>Assessment *</div><div class="isbarBody"><textarea id="oIsbarA" placeholder="Your physical assessment and key findings"></textarea></div></div>
+          <div class="isbarCard"><div class="isbarHead"><b>R</b>Recommendation *</div><div class="isbarBody"><textarea id="oIsbarR" placeholder="What you are requesting from the next specialty"></textarea></div></div>
+        </div>
+        <div class="requiredNote">All five fields are mandatory. The new consultation keeps the same Patient Journey ID but starts its own rota, Accept, attendance clock and OTP.</div>
+      </div>
+    </div>
+    <div class="actions" style="justify-content:flex-end;margin-top:14px"><button class="btn secondary" onclick="closeOnward()">Cancel</button><button class="btn primary" onclick="submitOnward()">Create & Send Onward Referral</button></div>
   </div>
 </div>
 
@@ -334,12 +358,40 @@ function dispositionCompliance(c){
  if(!c.arrivalIso)return null;if(!c.dispositionIso)return Date.now()-new Date(c.arrivalIso).getTime()<=4*60*60*1000?null:false;return new Date(c.dispositionIso)-new Date(c.arrivalIso)<=4*60*60*1000
 }
 function openOnward(id){
- const cc=state.cases.find(x=>x.id===id);if(!cc||!cc.arrival){alert('Onward Referral is available only after physical arrival/assessment.');return}
- const target=prompt('Onward referral to which specialty?\nOrthopedics / Internal Medicine / General Surgery / Cardiology / Neurosurgery');if(!target||!ROTA[target]||target===cc.specialty){alert('Choose another specialty.');return}
- const reason=prompt('Reason for onward referral after physical assessment:');if(!reason)return;
- const i=prompt('I — Identification:');if(!i)return;const s=prompt('S — Situation:');if(!s)return;const b=prompt('B — Background:');if(!b)return;const a=prompt('A — Assessment:');if(!a)return;const rcmd=prompt('R — Recommendation:');if(!rcmd)return;
- const u=me(),rota=getRota(target),nid='C-'+Date.now(),nc={id:nid,journey:cc.journey,parentId:cc.id,patient:cc.patient,patientName:cc.patientName,identifier:patientIdentifier(cc),bed:cc.bed,specialty:target,priority:cc.priority,reason,isbar:{i,s,b,a,r:rcmd},createdAt:now(),createdIso:stamp(),createdBy:u.name,status:'Pending First On-Call',currentLevel:'First On-Call',first:rota.first,firstId:rota.firstId,second:rota.second,secondId:rota.secondId,third:rota.third,thirdId:rota.thirdId,hod:rota.hod,hodId:rota.hodId,accepted:false,acceptedBy:null,acceptedById:null,acceptedAt:null,acceptedIso:null,acceptedLevel:null,acceptHistory:[],delayPhase:null,recontactStartedIso:null,recontactDeadlineIso:null,arrival:false,arrivalAt:null,arrivalIso:null,arrivalOtp:null,arrivalOtpRequest:null,safety:null,safetyOtp:null,safetyOtpRequest:null,redirect:null,disposition:null,dispositionIso:null,events:[{t:now(),e:'Onward Referral created',d:u.name+' • '+cc.specialty+' → '+target+' • same Patient Journey'}]};
- cc.disposition='Onward Referral';cc.dispositionIso=stamp();cc.events.push({t:now(),e:'Onward Referral after physical assessment',d:cc.specialty+' → '+target+' • '+reason});state.cases.unshift(nc);addAudit('Create Onward Referral',cc.specialty+' → '+target,cc.id);notifyUser(nc.firstId,'New Onward Referral: '+cc.patientName+' • '+target,nc.id);save();render()
+ const cc=state.cases.find(x=>x.id===id);if(!cc||!cc.arrival){alert('Onward Referral is available only after physical arrival is verified by OTP and the receiving physician has assessed the patient.');return}
+ const u=me();
+ document.getElementById('oSourceCaseId').value=cc.id;
+ document.getElementById('oCurrentSpec').value=cc.specialty;
+ document.getElementById('oTargetSpec').value='';
+ document.getElementById('oReason').value='';
+ document.getElementById('oIsbarI').value='Patient: '+cc.patientName+' | MRN/National ID: '+patientIdentifier(cc)+' | Bed: '+cc.bed+' | Current specialty: '+cc.specialty+' | Referring physician: '+u.name;
+ document.getElementById('oIsbarS').value='';
+ document.getElementById('oIsbarB').value=(cc.isbar&&cc.isbar.b)||'';
+ document.getElementById('oIsbarA').value='';
+ document.getElementById('oIsbarR').value='';
+ document.getElementById('onwardPatientSummary').innerHTML='<b>'+esc(cc.patientName)+'</b> • '+esc(patientIdentifier(cc))+' • Bed '+esc(cc.bed)+'<br>Journey: '+esc(cc.journey)+' • Physical arrival verified: '+esc(cc.arrivalAt||'Yes');
+ document.getElementById('onwardModal').classList.add('open')
+}
+function closeOnward(){document.getElementById('onwardModal').classList.remove('open')}
+function submitOnward(){
+ const sourceId=document.getElementById('oSourceCaseId').value,cc=state.cases.find(x=>x.id===sourceId);if(!cc||!cc.arrival){alert('Source consultation is not physically verified.');return}
+ const target=document.getElementById('oTargetSpec').value,reason=document.getElementById('oReason').value.trim();
+ const isbar={i:document.getElementById('oIsbarI').value.trim(),s:document.getElementById('oIsbarS').value.trim(),b:document.getElementById('oIsbarB').value.trim(),a:document.getElementById('oIsbarA').value.trim(),r:document.getElementById('oIsbarR').value.trim()};
+ if(!target||target===cc.specialty){alert('Choose a different receiving specialty.');return}
+ if(!reason||!isbar.i||!isbar.s||!isbar.b||!isbar.a||!isbar.r){alert('Reason and all five I-SBAR boxes are mandatory.');return}
+ const u=me(),rota=getRota(target),nid='C-'+Date.now();
+ const nc={id:nid,journey:cc.journey,parentId:cc.id,patient:cc.patient,patientName:cc.patientName,identifier:patientIdentifier(cc),bed:cc.bed,specialty:target,priority:cc.priority,reason,isbar,createdAt:now(),createdIso:stamp(),createdBy:u.name,createdById:u.id,origin:'Onward Referral',originSpecialty:cc.specialty,status:'Pending First On-Call',currentLevel:'First On-Call',first:rota.first,firstId:rota.firstId,second:rota.second,secondId:rota.secondId,third:rota.third,thirdId:rota.thirdId,hod:rota.hod,hodId:rota.hodId,accepted:false,acceptedBy:null,acceptedById:null,acceptedAt:null,acceptedIso:null,acceptedLevel:null,acceptHistory:[],delayPhase:null,recontactStartedIso:null,recontactDeadlineIso:null,arrival:false,arrivalAt:null,arrivalIso:null,arrivalOtp:null,arrivalOtpRequest:null,safety:null,safetyOtp:null,safetyOtpRequest:null,redirect:null,disposition:null,dispositionIso:null,events:[
+   {t:now(),e:'Onward Referral created',d:u.name+' • '+cc.specialty+' → '+target+' • same Patient Journey'},
+   {t:now(),e:'Mandatory I-SBAR completed',d:'New I / S / B / A / R documented by receiving physician'},
+   {t:now(),e:'First On-Call notified',d:rota.first||'Rota assignment pending'}
+ ]};
+ cc.disposition='Onward Referral to '+target;cc.dispositionIso=stamp();cc.dispositionBy=u.name;
+ cc.events.push({t:now(),e:'Onward Referral after physical assessment',d:u.name+' • '+cc.specialty+' → '+target+' • '+reason});
+ state.cases.unshift(nc);state.selected=nid;
+ addAudit('Create Onward Referral',cc.specialty+' → '+target+' • same Patient Journey '+cc.journey,cc.id);
+ notifyUser(nc.firstId,'New Onward Referral: '+cc.patientName+' • '+target+' • from '+cc.specialty,nc.id);
+ notifySpecialtyHod(target,'New Onward Referral to your specialty: '+cc.patientName,nc.id);
+ save();closeOnward();render()
 }
 function percent(n,d){return d?Math.round(n*100/d)+'%':'—'}
 function minutes(ms){return ms==null?null:Math.round(ms/60000)}
@@ -352,7 +404,7 @@ function caseMetrics(cases){
 function kpiHtml(m){return '<div class="kpis"><div class="kpi"><span>Total consultations</span><b>'+m.total+'</b></div><div class="kpi"><span>Within 30-min attendance KPI</span><b>'+m.within+'</b></div><div class="kpi"><span>Delayed >30 min</span><b>'+m.delayed+'</b></div><div class="kpi"><span>Median accept</span><b>'+(m.medianAccept==null?'—':m.medianAccept+'m')+'</b></div><div class="kpi"><span>Median attendance</span><b>'+(m.medianAttendance==null?'—':m.medianAttendance+'m')+'</b></div></div>'
 }
 function roleNav(){
- return '<div class="roleNav"><a href="?user=ED001&v=13">ED Physician</a><a href="?user=EDN001&v=13">ED Nurse</a><a href="?user=EDTL001&v=13">ED Team Leader</a><a href="?user=EDHOD001&v=13">ED HOD</a><a href="?user=ORTH1&v=13">First On-Call</a><a href="?user=ORTH2&v=13">Second On-Call</a><a href="?user=ORTH3&v=13">Third On-Call</a><a href="?user=ORTHHOD&v=13">Specialty HOD</a><a href="?user=MEDON1&v=13">Med Admin On-Call</a><a href="?user=MEDADM1&v=13">Medical Administration</a><a href="?user=CQI001&v=13">CQI & PS</a><a href="?user=SYS001&v=13">System Admin</a></div>'
+ return '<div class="roleNav"><a href="?user=ED001&v=14">ED Physician</a><a href="?user=EDN001&v=14">ED Nurse</a><a href="?user=EDTL001&v=14">ED Team Leader</a><a href="?user=EDHOD001&v=14">ED HOD</a><a href="?user=ORTH1&v=14">First On-Call</a><a href="?user=ORTH2&v=14">Second On-Call</a><a href="?user=ORTH3&v=14">Third On-Call</a><a href="?user=ORTHHOD&v=14">Specialty HOD</a><a href="?user=MEDON1&v=14">Med Admin On-Call</a><a href="?user=MEDADM1&v=14">Medical Administration</a><a href="?user=CQI001&v=14">CQI & PS</a><a href="?user=SYS001&v=14">System Admin</a></div>'
 }
 function openNew(){document.getElementById('newModal').classList.add('open')}
 function closeNew(){document.getElementById('newModal').classList.remove('open')}
@@ -418,6 +470,10 @@ function renderED(){
  (state.cases.length?'<div style="overflow:auto"><table><tr><th>Patient</th><th>Bed</th><th>Specialty</th><th>Status</th><th>Current Level</th><th>Created</th></tr>'+rows+'</table></div>':'<div class="empty"><b>No consultations yet</b>Click “New Consultation” to create the first ED referral.</div>')+'</div>'+detail+
  '<div class="card" style="margin-top:14px"><h2>Workflow Alerts</h2>'+notificationHtml()+'</div>'+roleNav();
 }
+function journeyPath(c){
+ const nodes=state.cases.filter(x=>x.journey===c.journey).sort((a,b)=>new Date(a.createdIso)-new Date(b.createdIso));
+ return nodes.map(x=>x.specialty).join(' → ')
+}
 function physicianCases(){
  const u=me();return state.cases.filter(cc=>{
    const aid=assigneeIdForLevel(cc,cc.currentLevel);
@@ -428,14 +484,14 @@ function renderPhysician(){
  const list=physicianCases(),cc=list[0]||null,u=me();
  document.getElementById('app').innerHTML='<div class="mobile"><div class="phone"><div class="phoneTop"><span>Secure receiving-physician view</span><span>'+esc(u.role)+'</span></div>'+
  (cc?'<div class="card" style="box-shadow:none"><div class="sub">Incoming / active consultation</div><h1 style="margin-top:4px">'+esc(cc.specialty)+'</h1><p><b>'+esc(cc.patientName)+'</b><br>'+esc(cc.patient)+' • Bed '+esc(cc.bed)+'</p>'+
- '<div class="profileLine"><span>MRN / National ID</span><span>'+esc(patientIdentifier(cc))+'</span></div><div class="profileLine"><span>Priority</span><span>'+esc(cc.priority||'Standard')+'</span></div><div class="profileLine"><span>Referring clinician</span><span>'+esc(cc.createdBy||'ED')+'</span></div><div class="profileLine"><span>Referral time</span><span>'+esc(cc.createdAt||'—')+'</span></div><div class="profileLine"><span>Current rota level</span><b>'+esc(cc.currentLevel)+'</b></div><div class="profileLine"><span>Reason</span><span>'+esc(cc.reason)+'</span></div>'+
+ '<div class="profileLine"><span>MRN / National ID</span><span>'+esc(patientIdentifier(cc))+'</span></div><div class="profileLine"><span>Priority</span><span>'+esc(cc.priority||'Standard')+'</span></div><div class="profileLine"><span>Referring clinician</span><span>'+esc(cc.createdBy||'ED')+'</span></div><div class="profileLine"><span>Referral time</span><span>'+esc(cc.createdAt||'—')+'</span></div><div class="profileLine"><span>Patient Journey</span><b>'+esc(cc.journey||'—')+'</b></div><div class="profileLine"><span>Current rota level</span><b>'+esc(cc.currentLevel)+'</b></div><div class="profileLine"><span>Journey path</span><span>'+esc(journeyPath(cc))+'</span></div><div class="profileLine"><span>Reason</span><span>'+esc(cc.reason)+'</span></div>'+
  '<h3 style="margin:14px 0 8px">Mandatory I-SBAR</h3>'+renderIsbar(cc)+timerHtml(cc,true)+safetyTimerHtml(cc)+
  (cc.safety&&cc.safety.active?'<div class="notice dangerNotice"><b>Safety Admission active.</b><br>Physical specialty acceptance is verified only by the ED-issued Safety Admission OTP.</div>':'')+
  (!cc.safety?.active&&!cc.accepted?'<button class="btn primary" style="width:100%;margin-top:12px" onclick="accept(\''+cc.id+'\')">Accept Consultation</button>':'')+
  (cc.accepted&&!cc.arrival&&!(cc.safety&&cc.safety.active)?'<div class="field" style="margin-top:12px"><label>ED Arrival OTP</label><input id="otpInput" inputmode="numeric" maxlength="6" placeholder="6-digit code"><button class="btn success" onclick="verify(\''+cc.id+'\')" style="margin-top:8px">Verify Physical Arrival</button></div>':'')+
  (cc.safety&&cc.safety.active&&!cc.safety.acceptedIso?'<div class="field" style="margin-top:12px"><label>Safety Admission OTP</label><input id="safetyOtpInput" inputmode="numeric" maxlength="6" placeholder="6-digit code"><button class="btn danger" onclick="verifySafety(\''+cc.id+'\')" style="margin-top:8px">Physically Accept Safety Admission</button></div>':'')+
  (cc.arrival?'<div class="banner ok" style="margin-top:12px"><b>Physical attendance verified</b><br>'+esc(cc.arrivalAt||'Verified')+'</div>':'')+
- (cc.arrival?'<div class="actions" style="margin-top:12px"><button class="btn success" onclick="setDisposition(\''+cc.id+'\',\'Admit to Ward\')">Admit</button><button class="btn secondary" onclick="setDisposition(\''+cc.id+'\',\'Discharge\')">Discharge</button><button class="btn primary" onclick="openOnward(\''+cc.id+'\')">Onward Referral</button></div>':'')+
+ (cc.arrival?'<div class="notice successNotice"><b>Physical assessment stage unlocked.</b><br>You may complete disposition or continue the same patient journey to another specialty. A new onward consultation will have its own rota, Accept, attendance clock and OTP.</div><div class="actions" style="margin-top:12px"><button class="btn success" onclick="setDisposition(\''+cc.id+'\',\'Admit to Ward\')">Admit</button><button class="btn secondary" onclick="setDisposition(\''+cc.id+'\',\'Discharge\')">Discharge</button><button class="btn primary" style="width:100%" onclick="openOnward(\''+cc.id+'\')">Continue Referral to Another Specialty</button></div>':'')+
  '<div class="notice"><b>No Reject / Cancel.</b> If you believe another specialty is appropriate before attendance, contact ED; only ED can close and redirect. After physical assessment, use Onward Referral.</div></div>':'<div class="empty"><b>No active consultation assigned to you</b>Cases appear here when your rota level becomes current.</div>')+
  '<div class="card" style="margin-top:12px"><h2>My Alerts</h2>'+notificationHtml()+'</div></div>'+roleNav()+'</div>';
 }
